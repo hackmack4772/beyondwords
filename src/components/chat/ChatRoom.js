@@ -6,7 +6,7 @@ import Message from "./Message";
 import Contact from "./Contact";
 import ChatForm from "./ChatForm";
 
-export default function ChatRoom({ currentChat, currentUser, socket }) {
+export default function ChatRoom({ currentChat, currentUser }) {
   const [messages, setMessages] = useState([]);
   const [incomingMessage, setIncomingMessage] = useState(null);
 
@@ -27,14 +27,14 @@ export default function ChatRoom({ currentChat, currentUser, socket }) {
     });
   }, [messages]);
 
-  useEffect(() => {
-    socket.current?.on("getMessage", (data) => {
-      setIncomingMessage({
-        senderId: data.senderId,
-        message: data.message,
-      });
-    });
-  }, [socket]);
+  // useEffect(() => {
+  //   socket.current?.on("getMessage", (data) => {
+  //     setIncomingMessage({
+  //       senderId: data.senderId,
+  //       message: data.message,
+  //     });
+  //   });
+  // }, [socket]);
 
   useEffect(() => {
     incomingMessage && setMessages((prev) => [...prev, incomingMessage]);
@@ -45,11 +45,11 @@ export default function ChatRoom({ currentChat, currentUser, socket }) {
       (member) => member !== currentUser.uid
     );
 
-    socket.current.emit("sendMessage", {
-      senderId: currentUser.uid,
-      receiverId: receiverId,
-      message: message,
-    });
+    // socket.current.emit("sendMessage", {
+    //   senderId: currentUser.uid,
+    //   receiverId: receiverId,
+    //   message: message,
+    // });
 
     const messageBody = {
       chatRoomId: currentChat._id,

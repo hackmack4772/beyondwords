@@ -79,12 +79,12 @@ export default function Login() {
           </div>
           <div className="flex items-center justify-between">
             <div className="text-sm">
-              <Link
+              {/* <Link
                 to="/register"
                 className="text-blue-600 hover:underline dark:text-blue-500"
               >
                 Don't have an account? Register
-              </Link>
+              </Link> */}
             </div>
           </div>
         </form>

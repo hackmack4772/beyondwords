@@ -1,11 +1,12 @@
-import { useEffect, useRef, useState } from "react";
-
+import { useEffect, useState } from "react";
 import {
   getAllUsers,
   getChatRooms,
-  initiateSocketConnection,
+  getMessagesOfChatRoom,
 } from "../../services/ChatService";
 import { useAuth } from "../../contexts/AuthContext";
+import { db } from "../../config/firebase";
+import { onSnapshot, collection, doc } from "firebase/firestore";
 
 import ChatRoom from "../chat/ChatRoom";
 import Welcome from "../chat/Welcome";
@@ -13,121 +14,67 @@ import AllUsers from "../chat/AllUsers";
 import SearchUsers from "../chat/SearchUsers";
 
 export default function ChatLayout() {
-  const [users, SetUsers] = useState([]);
-  const [filteredUsers, setFilteredUsers] = useState([]);
+  const [users, setUsers] = useState([]);
   const [chatRooms, setChatRooms] = useState([]);
-  const [filteredRooms, setFilteredRooms] = useState([]);
-
-  const [currentChat, setCurrentChat] = useState();
-  const [onlineUsersId, setonlineUsersId] = useState([]);
-  const [searchQuery, setSearchQuery] = useState("");
-
-  const [isContact, setIsContact] = useState(false);
-
-  const socket = useRef();
-
+  const [currentChat, setCurrentChat] = useState(null);
   const { currentUser } = useAuth();
 
   useEffect(() => {
-    const getSocket = async () => {
-      const res = await initiateSocketConnection();
-      socket.current = res;
-      socket.current.emit("addUser", currentUser.uid);
-      socket.current.on("getUsers", (users) => {
-        const userId = users.map((u) => u[0]);
-        setonlineUsersId(userId);
-      });
-    };
-
-    getSocket();
-  }, [currentUser.uid]);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      const res = await getChatRooms(currentUser.uid);
-      setChatRooms(res);
-    };
-
-    fetchData();
-  }, [currentUser.uid]);
-
-  useEffect(() => {
-    const fetchData = async () => {
+    // Fetch all users
+    const fetchUsers = async () => {
       const res = await getAllUsers();
-      SetUsers(res);
+      console.log(res,"resresresres")
+      setUsers(res);
     };
-
-    fetchData();
+    fetchUsers();
   }, []);
 
   useEffect(() => {
-    setFilteredUsers(users);
-    setFilteredRooms(chatRooms);
-  }, [users, chatRooms]);
+    if (currentUser?.uid) {
+      // Firestore real-time listener for chat rooms
+      const chatRoomsRef = collection(db, "chatRooms");
+      const unsubscribe = onSnapshot(chatRoomsRef, (snapshot) => {
+        const chatRoomsData = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        setChatRooms(chatRoomsData);
+      });
+
+      return () => unsubscribe();
+    }
+  }, [currentUser?.uid]);
 
   useEffect(() => {
-    if (isContact) {
-      setFilteredUsers([]);
-    } else {
-      setFilteredRooms([]);
-    }
-  }, [isContact]);
-
-  const handleChatChange = (chat) => {
-    setCurrentChat(chat);
-  };
-
-  const handleSearch = (newSearchQuery) => {
-    setSearchQuery(newSearchQuery);
-
-    const searchedUsers = users.filter((user) => {
-      return user.displayName
-        .toLowerCase()
-        .includes(newSearchQuery.toLowerCase());
-    });
-
-    const searchedUsersId = searchedUsers.map((u) => u.uid);
-
-    // If there are initial contacts
-    if (chatRooms.length !== 0) {
-      chatRooms.forEach((chatRoom) => {
-        // Check if searched user is a contact or not.
-        const isUserContact = chatRoom.members.some(
-          (e) => e !== currentUser.uid && searchedUsersId.includes(e)
-        );
-        setIsContact(isUserContact);
-
-        isUserContact
-          ? setFilteredRooms([chatRoom])
-          : setFilteredUsers(searchedUsers);
+    if (currentChat?.id) {
+      // Firestore real-time listener for messages
+      const chatRoomRef = doc(db, "chatRooms", currentChat.id);
+      const unsubscribe = onSnapshot(chatRoomRef, (snapshot) => {
+        if (snapshot.exists()) {
+          setCurrentChat({ id: snapshot.id, ...snapshot.data() });
+        }
       });
-    } else {
-      setFilteredUsers(searchedUsers);
+
+      return () => unsubscribe();
     }
-  };
+  }, [currentChat?.id]);
 
   return (
     <div className="container mx-auto">
       <div className="min-w-full bg-white border-x border-b border-gray-200 dark:bg-gray-900 dark:border-gray-700 rounded lg:grid lg:grid-cols-3">
         <div className="bg-white border-r border-gray-200 dark:bg-gray-900 dark:border-gray-700 lg:col-span-1">
-          <SearchUsers handleSearch={handleSearch} />
+          <SearchUsers />
 
           <AllUsers
-            users={searchQuery !== "" ? filteredUsers : users}
-            chatRooms={searchQuery !== "" ? filteredRooms : chatRooms}
-            setChatRooms={setChatRooms}
-            onlineUsersId={onlineUsersId}
+            users={users}
+            chatRooms={chatRooms}
             currentUser={currentUser}
-            changeChat={handleChatChange}
+            changeChat={setCurrentChat}
           />
         </div>
 
         {currentChat ? (
-          <ChatRoom
-            currentChat={currentChat}
-            currentUser={currentUser}
-            socket={socket}
-          />
+          <ChatRoom currentChat={currentChat} currentUser={currentUser} />
         ) : (
           <Welcome />
         )}

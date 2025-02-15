@@ -5,8 +5,8 @@ import {
   signOut,
   updateProfile,
 } from "firebase/auth";
-
-import auth from "../config/firebase";
+import { collection, addDoc } from "firebase/firestore";
+import auth ,{ db } from "../config/firebase";   // Ensure Firestore (db) is imported
 
 const AuthContext = createContext();
 
@@ -19,10 +19,23 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  function register(email, password) {
-    return createUserWithEmailAndPassword(auth, email, password);
+  async function register(email, password, fullName) {
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const user = userCredential.user;
+  
+    // Update user profile
+    await updateProfile(user, { displayName: fullName });
+  
+    // Store user in Firestore using collection
+    await addDoc(collection(db, "users"), {
+      uid: user.uid,
+      fullName,
+      email,
+      createdAt: new Date().toISOString(),
+    });
+  
+    return user;
   }
-
   function login(email, password) {
     return signInWithEmailAndPassword(auth, email, password);
   }
