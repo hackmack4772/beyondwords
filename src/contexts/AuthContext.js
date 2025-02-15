@@ -5,7 +5,7 @@ import {
   signOut,
   updateProfile,
 } from "firebase/auth";
-import { collection, addDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc ,updateDoc} from "firebase/firestore";
 import auth ,{ db } from "../config/firebase";   // Ensure Firestore (db) is imported
 
 const AuthContext = createContext();
@@ -21,19 +21,16 @@ export function AuthProvider({ children }) {
 
   async function register(email, password, fullName) {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    const user = userCredential.user;
-  
+    const user = userCredential.user;  
     // Update user profile
     await updateProfile(user, { displayName: fullName });
-  
-    // Store user in Firestore using collection
-    await addDoc(collection(db, "users"), {
+    const userRef = doc(db, "users", user.uid);  
+    await setDoc(userRef, {
       uid: user.uid,
-      fullName,
+      fullName:fullName || "EMo",
       email,
       createdAt: new Date().toISOString(),
-    });
-  
+    });  
     return user;
   }
   function login(email, password) {
@@ -44,7 +41,14 @@ export function AuthProvider({ children }) {
     return signOut(auth);
   }
 
-  function updateUserProfile(user, profile) {
+  async function updateUserProfile(user, profile) {
+    console.log(profile,"profile");
+    
+    const userRef = doc(db, "users", user.uid);
+    await updateDoc(userRef, {
+      ...profile,
+      updatedAt: new Date().toISOString(),
+    });
     return updateProfile(user, profile);
   }
 

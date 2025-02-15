@@ -70,6 +70,7 @@ export default function ChatLayout() {
             chatRooms={chatRooms}
             currentUser={currentUser}
             changeChat={setCurrentChat}
+            setChatRooms={setChatRooms}
           />
         </div>
 

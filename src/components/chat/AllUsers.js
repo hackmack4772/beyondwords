@@ -16,16 +16,29 @@ export default function AllUsers({
   currentUser,
   changeChat,
 }) {
+  
   const [selectedChat, setSelectedChat] = useState();
   const [nonContacts, setNonContacts] = useState([]);
   const [contactIds, setContactIds] = useState([]);
 
   useEffect(() => {
-    const Ids = chatRooms.map((chatRoom) => {
-      return chatRoom.members.find((member) => member !== currentUser.uid);
-    });
-    setContactIds(Ids);
+    if (chatRooms && Array.isArray(chatRooms)) {
+      const Ids = chatRooms.map((chatRoom) => {
+        console.log("Chat Room:", chatRoom); // Log each chatRoom
+        console.log("Members:", chatRoom?.members); // Log members
+  
+        if (!chatRoom?.members || !Array.isArray(chatRoom.members)) {
+          console.warn("Skipping chatRoom as members is not an array:", chatRoom);
+          return null;
+        }
+  
+        return chatRoom.members.find((member) => member !== currentUser.uid);
+      });
+  
+      setContactIds(Ids);
+    }
   }, [chatRooms, currentUser.uid]);
+  
 
   useEffect(() => {
     setNonContacts(
@@ -66,11 +79,11 @@ export default function AllUsers({
               )}
               onClick={() => changeCurrentChat(index, chatRoom)}
             >
-              <Contact
+              {/* <Contact
                 chatRoom={chatRoom}
                 onlineUsersId={onlineUsersId}
                 currentUser={currentUser}
-              />
+              /> */}
             </div>
           ))}
         </li>

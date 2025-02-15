@@ -43,7 +43,7 @@ export default function Login() {
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleFormSubmit}>
           <div className="rounded-md shadow-sm -space-y-px">
-            <div>
+            <div className="mb-8 ">
               <input
                 id="email-address"
                 name="email"
@@ -55,7 +55,7 @@ export default function Login() {
                 onChange={(e) => setEmail(e.target.value)}
               />
             </div>
-            <div>
+            <div className="mb-8 ">
               <input
                 id="password"
                 name="password"
