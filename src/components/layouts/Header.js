@@ -17,7 +17,7 @@ export default function Header() {
         <div className="container mx-auto flex flex-wrap items-center justify-between">
           <Link to="/" className="flex">
             <span className="self-center text-lg font-semibold whitespace-nowrap text-gray-900 dark:text-white">
-              Chat App
+              Emo Talks
             </span>
           </Link>
           <div className="flex md:order-2">
