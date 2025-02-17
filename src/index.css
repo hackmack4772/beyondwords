@@ -1,33 +1,33 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: "Lucida Sans", "Lucida Sans Regular", "Lucida Grande",
+    "Lucida Sans Unicode", Geneva, Verdana, sans-serif;
+}
 
-.emoji-picker-react {
-  @apply bg-white dark:bg-gray-800
-  }
+body {
+  background-image: url("/bg.jpg");
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  color: white;
+}
 
-  .emoji-picker-react .emoji-search {
-    @apply dark:bg-gray-800  dark:text-white dark:border-gray-700 dark:focus:border-sky-500
-    }
-  
-    .emoji-picker-react .emoji-categories  {
-      @apply dark:bg-gray-800;
-      }
+.container {
+  width: 80vw;
+  height: 90vh;
+  background-color: rgba(17, 25, 40, 0.75);
+  backdrop-filter: blur(19px) saturate(180%);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.125);
+  display: flex;
+}
 
-      .emoji-picker-react .emoji-scroll-wrapper::-webkit-scrollbar {
-        @apply dark:bg-gray-800 w-5
-      }
-
-      .emoji-picker-react .emoji-categories button  {
-        @apply contrast-0
-        }
-
-      .emoji-picker-react .emoji-scroll-wrapper .emoji-group::before {
-        @apply dark:bg-gray-800  dark:text-white
-      }
-
-  @layer base {
-    body {
-      @apply bg-white dark:bg-gray-900;
-    }
-  }
+.loading{
+  padding: 50px;
+  font-size: 36px;
+  border-radius: 10px;
+  background-color: rgba(17, 25, 40, 0.9);
+}
