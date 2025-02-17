@@ -41,7 +41,7 @@ const Login = () => {
     // VALIDATE UNIQUE USERNAME
     const usersRef = collection(db, "users");
     const q = query(usersRef, where("username", "==", username));
-    const querySnapshot = await getDocs(q);
+  const querySnapshot = await getDocs(q);
     if (!querySnapshot.empty) {
       return toast.warn("Select another username");
     }
