@@ -36,7 +36,7 @@ const Login = () => {
     // VALIDATE INPUTS
     if (!username || !email || !password)
       return toast.warn("Please enter inputs!");
-    if (!avatar.file) return toast.warn("Please upload an avatar!");
+    // if (!avatar.file) return toast.warn("Please upload an avatar!");
 
     // VALIDATE UNIQUE USERNAME
     const usersRef = collection(db, "users");
@@ -49,12 +49,12 @@ const Login = () => {
     try {
       const res = await createUserWithEmailAndPassword(auth, email, password);
 
-      const imgUrl = await upload(avatar.file);
+      // const imgUrl = await upload(avatar.file);
 
       await setDoc(doc(db, "users", res.user.uid), {
         username,
         email,
-        avatar: imgUrl,
+        // avatar: imgUrl,
         id: res.user.uid,
         blocked: [],
       });
