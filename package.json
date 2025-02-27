@@ -12,9 +12,11 @@
   "dependencies": {
     "emoji-picker-react": "^4.9.2",
     "firebase": "^10.10.0",
+    "framer-motion": "^12.4.5",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-toastify": "^10.0.5",
+    "styled-components": "^6.1.15",
     "timeago.js": "^4.0.2",
     "zustand": "^4.5.2"
   },
