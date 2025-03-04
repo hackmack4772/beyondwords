@@ -112,7 +112,7 @@ const Chat = () => {
   };
 
   return (
-    <div className="chat">
+    <>
       <div className="top">
         <div className="user">
           <img src={user?.avatar || "./avatar.png"} alt="" />
@@ -174,6 +174,11 @@ const Chat = () => {
           }
           value={text}
           onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !isCurrentUserBlocked && !isReceiverBlocked) {
+              handleSend();
+            }
+          }}
           disabled={isCurrentUserBlocked || isReceiverBlocked}
         />
         <div className="emoji">
@@ -194,7 +199,7 @@ const Chat = () => {
           Send
         </button>
       </div>
-    </div>
+    </>
   );
 };
 

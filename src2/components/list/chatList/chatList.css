@@ -71,3 +71,23 @@
     }
   }
 }
+
+
+.item {
+  display: flex;
+  align-items: center;
+  padding: 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.item:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.selected {
+  background: #5183fe !important;
+  color: white;
+  font-weight: bold;
+}

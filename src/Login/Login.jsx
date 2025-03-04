@@ -1,11 +1,10 @@
-import { useState } from "react";
-import styled, { keyframes } from "styled-components";
-import { motion, AnimatePresence } from "framer-motion";
-import { toast } from "react-toastify";
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
-import { auth, db } from "../../lib/firebase";
 import { collection, doc, getDocs, query, setDoc, where } from "firebase/firestore";
-import upload from "../../lib/upload";
+import { motion, AnimatePresence } from "framer-motion";
+import { useState } from "react";
+import { toast } from "react-toastify";
+import styled, { keyframes } from "styled-components"
+import { auth, db } from "../config/firebase";
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
 
 const fadeIn = keyframes`
   from { opacity: 0; transform: translateY(-10px); }
@@ -14,7 +13,7 @@ const fadeIn = keyframes`
 
 const Background = styled.div`
   display: flex;
-  align-items: center;
+  align-items: top;
   justify-content: center;
   height: 100vh;
   width: 100%;
@@ -25,11 +24,12 @@ const Container = styled(motion.div)`
   display: flex;
   flex-direction: column;
   align-items: center;
-  width: 80%;
+  width: 100%;
   max-width: 500px;
+  gap:20px;
   padding: 30px;
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(53, 48, 46, 0.1);
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
   backdrop-filter: blur(10px);
   animation: ${fadeIn} 0.6s ease-in-out;
@@ -113,86 +113,88 @@ const ToggleButton = styled.p`
     text-decoration: underline;
   }
 `;
-
 const Login = () => {
-  const [isSignIn, setIsSignIn] = useState(true);
+  const [isSignIn, setIsSignIn] = useState(true)
   const [loading, setLoading] = useState(false);
 
-  const handleToggle = () => setIsSignIn(!isSignIn);
+  const handleToggle = () => {
+    setIsSignIn(prev => !prev)
+  }
 
-  const handleAvatar = (e) => {
-    if (e.target.files[0]) {
-      setAvatar({
-        file: e.target.files[0],
-        url: URL.createObjectURL(e.target.files[0]),
-      });
-    }
-  };
-
-  const handleRegister = async (e) => {
+  const getFormData = (e) => {
     e.preventDefault();
-    setLoading(true);
     const formData = new FormData(e.target);
-
-    const { username, email, password } = Object.fromEntries(formData);
-
-    // VALIDATE INPUTS
-    if (!username || !email || !password)
-      return toast.warn("Please enter inputs!");
-    // if (!avatar.file) return toast.warn("Please upload an avatar!");
-
-    // VALIDATE UNIQUE USERNAME
-    const usersRef = collection(db, "users");
-    const q = query(usersRef, where("username", "==", username));
-  const querySnapshot = await getDocs(q);
-    if (!querySnapshot.empty) {
-      return toast.warn("Select another username");
-    }
-
+    return Object.fromEntries(formData);
+  }
+  const handleRegister = async (e) => {
     try {
-      const res = await createUserWithEmailAndPassword(auth, email, password);
+      setLoading(true)
+      const { username, email, password } = getFormData(e);
 
-      // const imgUrl = await upload(avatar.file);
+      // Validate inputs 
+      if (!username || !email || !password) {
+        return toast.warn("Please enter the inputs")
+      }
 
-      await setDoc(doc(db, "users", res.user.uid), {
-        username,
-        email,
-        // avatar: imgUrl,
-        id: res.user.uid,
-        blocked: [],
-      });
+      const userRef = collection(db, "users");
+      const q = query(userRef, where("username", "==", username))
+      const querySnapshot = await getDocs(q);
+      if (!querySnapshot.empty) {
+        return toast.warn("Select another username");
+      }
+      try {
+        const res = await createUserWithEmailAndPassword(auth, email, password);
+        await setDoc(doc(db, "users", res.user.id), {
+          username,
+          email,
+          avatar: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS8isakIOEhuLkUlzxIDyWpWenxZSEST5byog&shttps://hackmack.vercel.app/avatar.jpeg",
+          id: res.user.id,
+          blocked: []
+        })
+        await setDoc(doc(db, "userchats", res.user.id), {
+          chats: []
+        })
+        toast.success("Account created! You can login now!");
 
-      await setDoc(doc(db, "userchats", res.user.uid), {
-        chats: [],
-      });
 
-      toast.success("Account created! You can login now!");
-    } catch (err) {
-      console.log(err);
-      toast.error(err.message);
-    } finally {
-      setLoading(false);
+      } catch (error) {
+        console.log(err);
+        toast.error("Registration error");
+
+      }
+      // querySnapshot.forEach(doc=>{
+      //   console.log(doc.id,doc.data())
+      // })
+
+    } catch (error) {
+      console.warn("Something went wrong !", error)
     }
-  };
+    finally {
+      setLoading(false)
+    }
+
+
+  }
 
   const handleLogin = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-
-    const formData = new FormData(e.target);
-    const { email, password } = Object.fromEntries(formData);
-  
-    
-
+    setLoading(true)
+    const { email, password } = getFormData(e)
     try {
       await signInWithEmailAndPassword(auth, email, password);
-    } catch (err) {
-      console.log(err);
-      toast.error(err.message);
-    } finally {
-      setLoading(false);
+
+      toast.success("Login successful! Redirecting...");
+
+    } catch (error) {
+      console.error(err);
+      toast.error("Login failed. Please check your credentials.");
     }
-  };
+    finally {
+      setLoading(false)
+
+    }
+
+
+  }
 
   return (
     <Background>
@@ -235,9 +237,10 @@ const Login = () => {
         <ToggleButton onClick={handleToggle}>
           {isSignIn ? "Don't have an account? Sign Up" : "Already have an account? Sign In"}
         </ToggleButton>
+
       </Container>
     </Background>
-  );
-};
+  )
+}
 
-export default Login;
+export default Login

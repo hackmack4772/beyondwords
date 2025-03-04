@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import "./chatList.css";
 import AddUser from "./addUser/addUser";
 import { useUserStore } from "../../../lib/userStore";
@@ -15,21 +15,36 @@ const ChatList = () => {
   const { chatId, changeChat } = useChatStore();
 
   useEffect(() => {
+    console.log("Fetching chats for user:", currentUser.id);
+
     const unSub = onSnapshot(
       doc(db, "userchats", currentUser.id),
       async (res) => {
-        const items = res.data().chats;
+        console.log("Snapshot received:", res.data());
+
+        const items = res.data()?.chats || [];
 
         const promises = items.map(async (item) => {
-          const userDocRef = doc(db, "users", item.receiverId);
-          const userDocSnap = await getDoc(userDocRef);
+          console.log("Fetching user data for:", item.receiverId);
 
-          const user = userDocSnap.data();
+          try {
+            const userDocRef = doc(db, "users", item.receiverId);
+            const userDocSnap = await getDoc(userDocRef);
 
-          return { ...item, user };
+            if (!userDocSnap.exists()) {
+              console.warn("User document not found:", item.receiverId);
+              return { ...item, user: { username: "Unknown", avatar: "./avatar.png", blocked: [] } };
+            }
+
+            return { ...item, user: userDocSnap.data() };
+          } catch (error) {
+            console.error("Error fetching user document:", error);
+            return { ...item, user: { username: "Error", avatar: "./avatar.png", blocked: [] } };
+          }
         });
 
         const chatData = await Promise.all(promises);
+        console.log("Final chat data:", chatData);
 
         setChats(chatData.sort((a, b) => b.updatedAt - a.updatedAt));
       }
@@ -64,9 +79,11 @@ const ChatList = () => {
     }
   };
 
-  const filteredChats = chats.filter((c) =>
-    c.user.username.toLowerCase().includes(input.toLowerCase())
-  );
+  const filteredChats = useMemo(() => {
+    return chats.filter((c) =>
+      c.user.username.toLowerCase().includes(input.toLowerCase())
+    );
+  }, [chats, input]);
 
   return (
     <div className="chatList">
@@ -88,12 +105,9 @@ const ChatList = () => {
       </div>
       {filteredChats.map((chat) => (
         <div
-          className="item"
+          className={`item ${chatId === chat.chatId ? "selected" : ""}`}
           key={chat.chatId}
           onClick={() => handleSelect(chat)}
-          style={{
-            backgroundColor: chat?.isSeen ? "transparent" : "#5183fe",
-          }}
         >
           <img
             src={

@@ -30,7 +30,7 @@ const Detail = () => {
   };
 
   return (
-    <div className="detail">
+    <>
       <div className="user">
         <img src={user?.avatar || "./avatar.png"} alt="" />
         <h2>{user?.username}</h2>
@@ -120,7 +120,7 @@ const Detail = () => {
           Logout
         </button>
       </div>
-    </div>
+    </>
   );
 };
 
