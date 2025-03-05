@@ -3,7 +3,7 @@ import ReactDOM from "react-dom/client"
 import App from "./App.jsx"
 import "./index.css"
 import { BrowserRouter } from "react-router-dom";
-import Notification from "./notification/Notification.jsx";
+import Notification from "./components/notification/Notification.jsx";
 import store from "./app/store.js";
 import { Provider } from "react-redux";
 

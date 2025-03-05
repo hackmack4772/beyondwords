@@ -1,26 +1,51 @@
-import { createSlice } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { getFirestore, doc, getDoc } from 'firebase/firestore';
+import { auth } from '../../config/firebase';
 
-const initialState = {
-  currentUser: null,
-  isLoading: true,
-};
-
-const userSlice = createSlice({
-  name: 'usersData',
-  initialState,
-  reducers: {
-    fetchUserInfo: (state, action) => {
-      const userData = action.payload;
-      if (!userData) {
-        state.currentUser = null;
-        state.isLoading = false;
+// Define an async thunk
+export const fetchUserInfo = createAsyncThunk(
+  'user/fetchUserInfo',
+  async (userId, { rejectWithValue }) => {
+    try {
+      const db = getFirestore();
+      const userRef = doc(db, 'users', userId);
+      const userSnap = await getDoc(userRef);
+      
+      if (userSnap.exists()) {
+        return userSnap.data();
       } else {
-        state.currentUser = userData;
-        state.isLoading = false;
+        return rejectWithValue('User not found');
       }
-    },
+    } catch (error) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
+// Create a slice
+const userSlice = createSlice({
+  name: 'user',
+  initialState: {
+    currentUser: null,
+    isLoading: false,
+    error: null,
+  },
+  reducers: {},
+  extraReducers: (builder) => {
+    builder
+      .addCase(fetchUserInfo.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(fetchUserInfo.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.currentUser = action.payload;
+      })
+      .addCase(fetchUserInfo.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
+      });
   },
 });
 
-export const { fetchUserInfo } = userSlice.actions;
 export default userSlice.reducer;

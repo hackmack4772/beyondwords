@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
 import { toast } from "react-toastify";
 import styled, { keyframes } from "styled-components"
-import { auth, db } from "../config/firebase";
+import { auth, db } from "../../config/firebase";
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
 
 const fadeIn = keyframes`
@@ -13,7 +13,7 @@ const fadeIn = keyframes`
 
 const Background = styled.div`
   display: flex;
-  align-items: top;
+  align-items: center;
   justify-content: center;
   height: 100vh;
   width: 100%;
