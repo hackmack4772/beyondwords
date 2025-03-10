@@ -5,7 +5,7 @@ import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "./config/firebase";
 import { useSelector, useDispatch } from "react-redux";
 import { fetchUserInfo } from "./features/user-data/usersdata";
-import List from "./components/chatwindow/List";
+import List from "./components/chatwindow/chat-layout/List";
 import styled from "styled-components";
 import { motion } from "framer-motion";
 const Container = styled(motion.div)`

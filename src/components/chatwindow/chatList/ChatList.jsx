@@ -1,15 +1,17 @@
 import { useEffect, useMemo, useState } from "react"
 import "./chatList.css"
-import { useSelector } from "react-redux"
-import { doc, getDoc, onSnapshot } from "firebase/firestore"
+import { useDispatch, useSelector } from "react-redux"
+import { doc, getDoc, onSnapshot, updateDoc } from "firebase/firestore"
 import { db } from "../../../config/firebase"
-
+import { changeChat } from "../../../features/use-chat-store/chatStore"
 
 const ChatList = () => {
     const [input, setInput] = useState('')
     const [addMode, setAddMode] = useState('')
     const [chats, setChats] = useState([])
     const currentUser = useSelector((state) => state.user.currentUser)
+    const {chatId}= useSelector((state) => state.chat)    
+    const dispatch=useDispatch()
 
     useEffect(() => {
         const unSub = onSnapshot(doc(db, 'userchats', currentUser.id), async (res) => {
@@ -17,10 +19,8 @@ const ChatList = () => {
             const promises = items.map(async (item) => {
                 try {
                     const { receiverId } = item
-                    console.log(receiverId, "receiverId");
                     const userDocRef = doc(db, "users", receiverId)
                     const userDocSnap = await getDoc(userDocRef)
-
                     if (!userDocSnap.exists) {
                         console.warn("User Document Not found:", receiverId)
                         return {
@@ -41,7 +41,6 @@ const ChatList = () => {
 
             const chatData = await Promise.all(promises)
             setChats(chatData.sort((a, b) => b.updatedAt - a.updatedAt));
-            // const promises=items.map(async )
         })
 
         return () => {
@@ -57,8 +56,24 @@ const ChatList = () => {
 
     }, [chats, input])
 
+    const handleSelect = async (chat) => {
+        try {
+            const userChats = chats.map((item) => {
+                const { user, ...rest} = item;
+                return rest
+            })
+            const chatIndex=userChats.findIndex((item)=>(item.chatId ==chat.chatId))
+            userChats[chatIndex].isSeen=true;
+            const userChatsRef=doc(db,"userchats",currentUser.id);
+            await updateDoc(userChatsRef,{
+                chats:userChats
+            });
+            dispatch(changeChat({currentUser,chatId:chat.chatId,user:chat.user}))
 
-    
+        } catch (error) {
+            console.log(error)
+        }
+    }
     return (
         <div className="chatList">
             <div className="search">
@@ -79,31 +94,28 @@ const ChatList = () => {
                 />
             </div>
             {filteredChats.map((chat) => (
-                    
-                    <div key={chat.chatId}>
-                        <img
-                            src={
-                                chat.user.blocked.includes(currentUser.id)
-                                    ? "./avatar.png"
-                                    : chat.user.avatar || "./avatar.png"
 
+                <div key={
+                    chat.chatId}
+                    onClick={() => {handleSelect(chat)}}
+                    className={`item ${chatId === chat.chatId ? "selected" : ""}`}
+                    >
+                    <img
+                        src={
+                            chat.user.blocked.includes(currentUser.id)
+                                ? "./avatar.png"
+                            : chat.user.avatar || "./avatar.png"}
+                    />
+                    <div className="texts">
+                        <span>
+                            {chat.user.blocked.includes(currentUser.id)
+                                ? "User" : chat.user.username
                             }
-                        />
-                        <div className="texts">
-                            <span>
-                                {chat.user.blocked.includes(currentUser.id)
-                                    ? "User" : chat.user.username
-                                }
-                            </span>
-                            <p>{chat.lastMessage}</p>
-                        </div>
+                        </span>
+                        <p>{chat.lastMessage}</p>
                     </div>
-            ))
-            }
+                </div>))}
         </div>
     )
-
-
 }
-
 export default ChatList
