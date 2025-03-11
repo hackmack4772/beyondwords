@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from "react-redux"
 import { doc, getDoc, onSnapshot, updateDoc } from "firebase/firestore"
 import { db } from "../../../config/firebase"
 import { changeChat } from "../../../features/use-chat-store/chatStore"
+import AddUser from "./adduser/AddUser"
 
 const ChatList = () => {
     const [input, setInput] = useState('')
@@ -115,6 +116,7 @@ const ChatList = () => {
                         <p>{chat.lastMessage}</p>
                     </div>
                 </div>))}
+                {addMode && <AddUser/>}
         </div>
     )
 }
