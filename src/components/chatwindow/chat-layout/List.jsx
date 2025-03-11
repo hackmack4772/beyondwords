@@ -15,7 +15,9 @@ const List = () => {
             <Userinfo />
             <ChatList />
         </div>
+        <div className="chat">
         {chatId&& <Chat/>}
+        </div>
 
         </>
     )

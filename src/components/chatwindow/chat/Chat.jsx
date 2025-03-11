@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import "./chat.css"
 import { useSelector } from "react-redux";
-import { doc, onSnapshot } from "firebase/firestore";
+import { arrayUnion, doc, getDoc, onSnapshot, updateDoc } from "firebase/firestore";
 import { db } from "../../../config/firebase";
 import { format } from "timeago.js";
 import EmojiPicker from "emoji-picker-react";
+import upload from "../../../../src2/lib/upload";
+
 
 
 const Chat = () => {
@@ -16,9 +18,11 @@ const Chat = () => {
     url: "",
   });
   const [text, setText] = useState("");
+  const [open, setOpen] = useState(false);
 
 
-  
+
+
   const endRef = useRef(null);
 
   useEffect(() => {
@@ -49,161 +53,164 @@ const Chat = () => {
 
   const handleSend = async () => {
     if (text === "") return;
-
     let imgUrl = null;
-
     try {
       if (img.file) {
-        imgUrl = await upload(img.file);
+        imgUrl = await upload(img.file)
       }
-
       await updateDoc(doc(db, "chats", chatId), {
         messages: arrayUnion({
           senderId: currentUser.id,
           text,
           createdAt: new Date(),
-          ...(imgUrl && { img: imgUrl }),
-        }),
-      });
+          ...(imgUrl && { img: imgUrl })
+        })
+      })
 
-      const userIDs = [currentUser.id, user.id];
-
-      userIDs.forEach(async (id) => {
-        const userChatsRef = doc(db, "userchats", id);
+      const userIDs = [currentUser.id, user.id]
+      userIDs.forEach(async id => {
+        const userChatsRef = doc(db, "userchats", id)
         const userChatsSnapshot = await getDoc(userChatsRef);
-
         if (userChatsSnapshot.exists()) {
-          const userChatsData = userChatsSnapshot.data();
+          const userChatsData = userChatsSnapshot.data()
 
           const chatIndex = userChatsData.chats.findIndex(
             (c) => c.chatId === chatId
           );
 
           userChatsData.chats[chatIndex].lastMessage = text;
-          userChatsData.chats[chatIndex].isSeen =
-            id === currentUser.id ? true : false;
+          userChatsData.chats[chatIndex].isSeen = id == currentUser.id ? true : false;
           userChatsData.chats[chatIndex].updatedAt = Date.now();
-
           await updateDoc(userChatsRef, {
-            chats: userChatsData.chats,
-          });
-        }
-      });
-    } catch (err) {
-      console.log(err);
-    } finally{
-    setImg({
-      file: null,
-      url: "",
-    });
+            chats: userChatsData.chats
+          })
 
-    setText("");
+
+
+        }
+
+
+
+
+      })
+    } catch (error) {
+      console.log(err);
+
     }
+    finally {
+      setImg({
+        file: null,
+        url: "",
+      });
+
+      setText("");
+    }
+
   };
   return (
     <>
-    {/* Top Section */}
-    <div className="top">
-      <div className="user">
-        <img src={user?.avatar || "./avatar.png"} alt="User Avatar" />
-        <div className="texts">
-          <span>{user?.username}</span>
-          <p>Lorem ipsum dolor, sit amet.</p>
-        </div>
-      </div>
-      <div className="icons">
-        <img src="./phone.png" alt="Phone Icon" />
-        <img src="./video.png" alt="Video Icon" />
-        <img src="./info.png" alt="Info Icon" />
-      </div>
-    </div>
-  
-    {/* Chat Messages */}
-    <div className="center">
-      {chat?.messages?.map((message) => (
-        <div
-          key={message?.createdAt} 
-          className={message.senderId === currentUser?.id ? "message own" : "message"}
-        >
+      {/* Top Section */}
+      <div className="top">
+        <div className="user">
+          <img src={user?.avatar || "./avatar.png"} alt="User Avatar" />
           <div className="texts">
-            {message.img && <img src={message.img} alt="Message Attachment" />}
-            <p>{message.text}</p>
-            <span>{format(message.createdAt.toDate())}</span>
+            <span>{user?.username}</span>
+            <p>Lorem ipsum dolor, sit amet.</p>
           </div>
         </div>
-      ))}
-  
-      {/* Display Selected Image Before Sending */}
-      {img.url && (
-        <div className="message own">
-          <div className="texts">
-            <img src={img.url} alt="Selected for Sending" />
-          </div>
+        <div className="icons">
+          <img src="./phone.png" alt="Phone Icon" />
+          <img src="./video.png" alt="Video Icon" />
+          <img src="./info.png" alt="Info Icon" />
         </div>
-      )}
-  
-      {/* Auto Scroll Reference */}
-      <div ref={endRef}></div>
-    </div>
-  
-    {/* Bottom (Input Section) */}
-    <div className="bottom">
-      <div className="icons">
-        <label htmlFor="file">
-          <img src="./img.png" alt="Upload Image" />
-        </label>
-        <input
-          type="file"
-          id="file"
-          style={{ display: "none" }}
-          onChange={handleImg}
-        />
-        <img src="./camera.png" alt="Camera Icon" />
-        <img src="./mic.png" alt="Microphone Icon" />
       </div>
-  
-      <input
-        type="text"
-        placeholder={
-          isCurrentUserBlocked || isReceiverBlocked
-            ? "You cannot send a message"
-            : "Type a message..."
-        }
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && !isCurrentUserBlocked && !isReceiverBlocked) {
-            handleSend();
-          }
-        }}
-        disabled={isCurrentUserBlocked || isReceiverBlocked}
-      />
-  
-      {/* Emoji Picker */}
-      <div className="emoji">
-        <img
-          src="./emoji.png"
-          alt="Emoji Picker"
-          onClick={() => setOpen((prev) => !prev)}
-        />
-        {open && (
-          <div className="picker">
-            <EmojiPicker open={open} onEmojiClick={handleEmoji} />
+
+      {/* Chat Messages */}
+      <div className="center">
+        {chat?.messages?.map((message) => (
+          <div
+            key={message?.createdAt}
+            className={message.senderId === currentUser?.id ? "message own" : "message"}
+          >
+            <div className="texts">
+              {message.img && <img src={message.img} alt="Message Attachment" />}
+              <p>{message.text}</p>
+              <span>{format(message.createdAt.toDate())}</span>
+            </div>
+          </div>
+        ))}
+
+        {/* Display Selected Image Before Sending */}
+        {img.url && (
+          <div className="message own">
+            <div className="texts">
+              <img src={img.url} alt="Selected for Sending" />
+            </div>
           </div>
         )}
+
+        {/* Auto Scroll Reference */}
+        <div ref={endRef}></div>
       </div>
-  
-      {/* Send Button */}
-      <button
-        className="sendButton"
-        onClick={handleSend}
-        disabled={isCurrentUserBlocked || isReceiverBlocked}
-      >
-        Send
-      </button>
-    </div>
-  </>
-  
+
+      {/* Bottom (Input Section) */}
+      <div className="bottom">
+        <div className="icons">
+          <label htmlFor="file">
+            <img src="./img.png" alt="Upload Image" />
+          </label>
+          <input
+            type="file"
+            id="file"
+            style={{ display: "none" }}
+            onChange={handleImg}
+          />
+          <img src="./camera.png" alt="Camera Icon" />
+          <img src="./mic.png" alt="Microphone Icon" />
+        </div>
+
+        <input
+          type="text"
+          placeholder={
+            isCurrentUserBlocked || isReceiverBlocked
+              ? "You cannot send a message"
+              : "Type a message..."
+          }
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !isCurrentUserBlocked && !isReceiverBlocked) {
+              handleSend();
+            }
+          }}
+          disabled={isCurrentUserBlocked || isReceiverBlocked}
+        />
+
+        {/* Emoji Picker */}
+        <div className="emoji">
+          <img
+            src="./emoji.png"
+            alt="Emoji Picker"
+            onClick={() => setOpen((prev) => !prev)}
+          />
+          {open && (
+            <div className="picker">
+              <EmojiPicker open={open} onEmojiClick={handleEmoji} />
+            </div>
+          )}
+        </div>
+
+        {/* Send Button */}
+        <button
+          className="sendButton"
+          onClick={handleSend}
+          disabled={isCurrentUserBlocked || isReceiverBlocked}
+        >
+          Send
+        </button>
+      </div>
+    </>
+
 
   )
 };
