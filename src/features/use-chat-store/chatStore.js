@@ -33,8 +33,15 @@ const chatSlice = createSlice({
             }
 
         },
+        resetChat: (state) => {
+            state.chatId = null;
+            state.user = null;
+            state.isCurrentUserBlocked = false;
+            state.isReceiverBlocked = false;
+        }
+        
     },
 });
 
-export const { changeChat } = chatSlice.actions;
+export const { changeChat,resetChat } = chatSlice.actions;
 export default chatSlice.reducer;

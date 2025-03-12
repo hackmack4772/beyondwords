@@ -7,6 +7,7 @@ export const fetchUserInfo = createAsyncThunk(
   'user/fetchUserInfo',
   async (userId, { rejectWithValue }) => {
     try {
+      if (!userId) return null; 
       const db = getFirestore();
       const userRef = doc(db, 'users', userId);
       const userSnap = await getDoc(userRef);
@@ -21,6 +22,7 @@ export const fetchUserInfo = createAsyncThunk(
     }
   }
 );
+
 
 // Create a slice
 const userSlice = createSlice({

@@ -1,21 +1,39 @@
-import { useSelector } from "react-redux"
-import "./userInfo.css"
-const  Userinfo = () => {
-    const currentUser = useSelector((state) => state?.user?.currentUser)
-    return (
-        <div className='userInfo'>
-        <div className="user">
-          <img src={currentUser.avatar || "./avatar.png"} alt="" />
-          <h2>{currentUser.username}</h2>
-        </div>
-        <div className="icons">
-          <img src="./more.png" alt="" />
-          <img src="./video.png" alt="" />
-          <img src="./edit.png" alt="" />
-        </div>
+import { useDispatch, useSelector } from "react-redux";
+import "./userInfo.css";
+import { signOut } from "firebase/auth";
+import { resetChat } from "../../../features/use-chat-store/chatStore";
+import { auth } from "../../../config/firebase";
+import { useNavigate } from "react-router-dom";
+
+const Userinfo = () => {
+  const currentUser = useSelector((state) => state?.user?.currentUser);
+  const dispatch = useDispatch();
+  const navigate = useNavigate(); 
+
+  const handleLogout = async () => {
+    try {
+      if(auth.currentUser){
+        auth.signOut();
+      }
+      dispatch(resetChat());
+    } catch (error) {
+      console.error("Logout Error:", error);
+    }
+  };
+
+  return (
+    <div className="userInfo">
+      <div className="user">
+        <img src={currentUser?.avatar || "./avatar.png"} alt="User Avatar" />
+        <h2>{currentUser?.username}</h2>
       </div>
-    )
-}
+      <div className="icons">
+        <img src="./more.png" alt="More" />
+        <img src="./edit.png" alt="Edit" />
+        <img src="./logout.svg" alt="Logout" onClick={handleLogout} />
+      </div>
+    </div>
+  );
+};
 
-
-export default Userinfo
+export default Userinfo;
