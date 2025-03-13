@@ -1,16 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import "./chat.css"
-import { useSelector } from "react-redux";
-import { arrayUnion, doc, getDoc, onSnapshot, updateDoc } from "firebase/firestore";
+import { useDispatch, useSelector } from "react-redux";
+import { arrayRemove, arrayUnion, doc, getDoc, onSnapshot, updateDoc } from "firebase/firestore";
 import { db } from "../../../config/firebase";
 import { format } from "timeago.js";
 import EmojiPicker from "emoji-picker-react";
-import upload from "../../../../src2/lib/upload";
-
-
-
+import { changeBlock } from "../../../features/use-chat-store/chatStore";
+import upload from "../../../utils/upload";
 const Chat = () => {
   const currentUser = useSelector((state) => state.user.currentUser)
+  const dispatch=useDispatch()
   const { chatId, user, isCurrentUserBlocked, isReceiverBlocked } = useSelector((state) => state.chat)
   const [chat, setChat] = useState([])
   const [img, setImg] = useState({
@@ -19,10 +18,6 @@ const Chat = () => {
   });
   const [text, setText] = useState("");
   const [open, setOpen] = useState(false);
-
-
-
-
   const endRef = useRef(null);
 
   useEffect(() => {
@@ -52,9 +47,11 @@ const Chat = () => {
   };
 
   const handleSend = async () => {
-    if (text === "") return;
+    console.log(text == "" && !img.file,"ge");
+    
+    if (text == "" && !img.file) return;
     let imgUrl = null;
-    try {
+    try {      
       if (img.file) {
         imgUrl = await upload(img.file)
       }
@@ -84,14 +81,7 @@ const Chat = () => {
           await updateDoc(userChatsRef, {
             chats: userChatsData.chats
           })
-
-
-
         }
-
-
-
-
       })
     } catch (error) {
       console.log(err);
@@ -107,6 +97,37 @@ const Chat = () => {
     }
 
   };
+
+    // const handleBlock = async () => {
+    //   if (!user) return;
+  
+    //   const userDocRef = doc(db, "users", currentUser.id);
+  
+    //   try {
+    //     await updateDoc(userDocRef, {
+    //       blocked: isReceiverBlocked ? arrayRemove(user.id) : arrayUnion(user.id),
+    //     });
+    //   } catch (err) {
+    //     console.log(err);
+    //   }
+    // };
+
+  const handleBlockUser=async ()=>{
+
+    if(!user) return ;
+    const updateDocRef=doc(db,"users",currentUser.id);
+    try {
+      await updateDoc(updateDocRef,{
+        blocked:isReceiverBlocked ?arrayRemove(user.id):arrayUnion(user.id)
+      })
+      dispatch(changeBlock());
+
+      
+    } catch (error) {
+     console.log(error);
+
+    }
+  }
   return (
     <>
       {/* Top Section */}
@@ -121,7 +142,7 @@ const Chat = () => {
         <div className="icons">
           <img src="./phone.png" alt="Phone Icon" />
           <img src="./video.png" alt="Video Icon" />
-          <img src="./info.png" alt="Info Icon" />
+          <img src={`${isReceiverBlocked?"./block-red.svg":"./block.svg"}`} alt="Info Icon"  onClick={handleBlockUser} />
         </div>
       </div>
 
