@@ -8,6 +8,12 @@ import EmojiPicker from "emoji-picker-react";
 import { changeBlock } from "../../../features/use-chat-store/chatStore";
 import upload from "../../../utils/upload";
 const Chat = () => {
+  const [recording, setRecording] = useState(false);
+  const [audioBlob, setAudioBlob] = useState(null);
+  const [audioURL, setAudioURL] = useState(null);
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
+  
   const currentUser = useSelector((state) => state.user.currentUser)
   const dispatch=useDispatch()
   const { chatId, user, isCurrentUserBlocked, isReceiverBlocked } = useSelector((state) => state.chat)
@@ -97,7 +103,50 @@ const Chat = () => {
     }
 
   };
-
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  
+      // Reset chunks before new recording
+      audioChunksRef.current = [];  
+  
+      mediaRecorderRef.current = new MediaRecorder(stream);
+  
+      mediaRecorderRef.current.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+  
+      mediaRecorderRef.current.onstop = async () => {
+        if (audioChunksRef.current.length === 0) {
+          console.error("No audio data recorded!");
+          return;
+        }
+  
+        const audioBlob = new Blob(audioChunksRef.current, { type: "audio/wav" });
+        const url = await upload(audioBlob); // Make sure `upload` function is defined
+  
+        setAudioBlob(audioBlob);
+        setAudioURL(URL.createObjectURL(audioBlob));
+      };
+  
+      mediaRecorderRef.current.start();
+      setRecording(true);
+    } catch (error) {
+      console.error("Error starting recording:", error);
+    }
+  };
+  
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      mediaRecorderRef.current.stop();
+      setRecording(false);
+    } else {
+      console.error("Recorder is not active");
+    }
+  };
+  
     // const handleBlock = async () => {
     //   if (!user) return;
   
@@ -187,7 +236,10 @@ const Chat = () => {
             onChange={handleImg}
           />
           <img src="./camera.png" alt="Camera Icon" />
-          <img src="./mic.png" alt="Microphone Icon" />
+          <button onClick={recording ? stopRecording : startRecording}>
+        {recording ? "Stop Recording" : <img src="./mic.png" alt="Microphone Icon" />}
+      </button>
+          
         </div>
 
         <input
