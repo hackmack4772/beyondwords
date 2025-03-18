@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { db, auth } from "../../../../config/firebase";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
-import { updateProfile, updateEmail, reauthenticateWithCredential, EmailAuthProvider, onAuthStateChanged } from "firebase/auth";
+import { updateProfile, onAuthStateChanged } from "firebase/auth";
 import "./editProfile.css";
 import upload from "../../../../utils/upload";
 import { fetchUserInfo } from "../../../../features/user-data/usersdata";
@@ -10,11 +10,16 @@ import { fetchUserInfo } from "../../../../features/user-data/usersdata";
 const EditProfile = ({ setShowEditMode }) => {
     const currentUser = useSelector((state) => state.user.currentUser);
     const [user, setUser] = useState(null);
-    const [formData, setFormData] = useState({ username: "", email: "", avatar: "" });
+    const [formData, setFormData] = useState({ 
+        username: "", 
+        name: "",
+        about: "",
+        avatar: "" 
+    });
     const [avatarFile, setAvatarFile] = useState(null);
-    const [password, setPassword] = useState(""); // Needed for reauthentication
     const [loading, setLoading] = useState(false);
     const dispatch = useDispatch();
+
     useEffect(() => {
         const fetchUser = async () => {
             if (!currentUser) return;
@@ -24,7 +29,8 @@ const EditProfile = ({ setShowEditMode }) => {
                     setUser(userDoc.data());
                     setFormData({
                         username: userDoc.data().username || "",
-                        email: userDoc.data().email || "",
+                        name: userDoc.data().name || "",
+                        about: userDoc.data().about || "",
                         avatar: userDoc.data().avatar || "./avatar.png"
                     });
                 }
@@ -35,18 +41,18 @@ const EditProfile = ({ setShowEditMode }) => {
 
         fetchUser();
 
-        // Listen for Firebase Auth changes and refresh user data
+        // Sync with Firebase Auth state
         const unsubscribe = onAuthStateChanged(auth, (updatedUser) => {
             if (updatedUser) {
-                setFormData({
-                    username: updatedUser.displayName || "",
-                    email: updatedUser.email || "",
-                    avatar: updatedUser.photoURL || "./avatar.png"
-                });
+                setFormData((prev) => ({
+                    ...prev,
+                    username: updatedUser.displayName || prev.username,
+                    avatar: updatedUser.photoURL || prev.avatar
+                }));
             }
         });
 
-        return () => unsubscribe(); // Cleanup listener on unmount
+        return () => unsubscribe();
     }, [currentUser]);
 
     const handleChange = (e) => {
@@ -59,37 +65,15 @@ const EditProfile = ({ setShowEditMode }) => {
         }
     };
 
-    const reauthenticateUser = async () => {
-        try {
-            const credential = EmailAuthProvider.credential(auth.currentUser.email, password);
-            await reauthenticateWithCredential(auth.currentUser, credential);
-            return true;
-        } catch (error) {
-            console.error("Reauthentication failed:", error);
-            alert("Reauthentication failed. Please check your password.");
-            return false;
-        }
-    };
-
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
         try {
             let avatarURL = formData.avatar;
 
-            // Upload new avatar to Cloudinary if selected
+            // Upload new avatar if changed
             if (avatarFile) {
                 avatarURL = await upload(avatarFile);
-            }
-
-            // Reauthenticate if email is changed
-            if (formData.email !== auth.currentUser.email) {
-                const success = await reauthenticateUser();
-                if (!success) {
-                    setLoading(false);
-                    return;
-                }
-                await updateEmail(auth.currentUser, formData.email);
             }
 
             // Update Firebase Auth profile
@@ -101,23 +85,19 @@ const EditProfile = ({ setShowEditMode }) => {
             // Update Firestore user document
             await updateDoc(doc(db, "users", currentUser.id), {
                 username: formData.username,
-                email: formData.email,
+                name: formData.name,
+                about: formData.about,
                 avatar: avatarURL
             });
-
-            // Force Auth state update to trigger useEffect
-            auth.currentUser.reload();
 
         } catch (error) {
             console.error("Error updating profile:", error);
         } finally {
+            // Refresh Redux store and close edit mode
             dispatch(fetchUserInfo(currentUser.id)).then(() => {
                 setShowEditMode(false);
                 setLoading(false);
-
-
-            })
-            
+            });
         }
     };
 
@@ -130,13 +110,9 @@ const EditProfile = ({ setShowEditMode }) => {
                         <input type="file" accept="image/*" onChange={handleAvatarChange} />
                     </div>
                     <input type="text" name="username" value={formData.username} onChange={handleChange} placeholder="Username" />
-                    <input type="email" name="email" value={formData.email} onChange={handleChange} placeholder="Email" />
-
-                    {/* Only ask for password if email is being changed */}
-                    {formData.email !== auth.currentUser.email && (
-                        <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Current Password" required />
-                    )}
-
+                    <input type="text" name="name" value={formData.name} onChange={handleChange} placeholder="Full Name" />
+                    <textarea name="about" value={formData.about} onChange={handleChange} placeholder="About You"></textarea>
+                    
                     <button type="submit" disabled={loading}>{loading ? "Updating..." : "Update Profile"}</button>
                 </form>
             ) : (

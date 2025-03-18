@@ -15,7 +15,7 @@ const Chat = () => {
   const [audioURL, setAudioURL] = useState(null);
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
-
+  const [typing, setTyping] = useState(false);
   const currentUser = useSelector((state) => state.user.currentUser);
   const dispatch = useDispatch();
   const { chatId, user, isCurrentUserBlocked, isReceiverBlocked } = useSelector((state) => state.chat);
@@ -23,6 +23,8 @@ const Chat = () => {
   const [img, setImg] = useState({ file: null, url: "" });
   const [text, setText] = useState("");
   const [open, setOpen] = useState(false);
+  const [isOnline, setIsOnline] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
   const endRef = useRef(null);
 
   useEffect(() => {
@@ -35,6 +37,19 @@ const Chat = () => {
     });
     return () => unSub();
   }, [chatId]);
+    useEffect(() => {
+      if (user?.id) {
+        const userStatusRef = doc(db, "users", user.id);
+        const unSub = onSnapshot(userStatusRef, (docSnap) => {
+          if (docSnap.exists()) {
+            const lastSeen = docSnap.data().lastSeen;
+            setIsOnline(Date.now() - lastSeen?.toMillis() < 60000);
+            setIsTyping(docSnap.data().typing || false);
+          }
+        });
+        return () => unSub();
+      }
+    }, [user]);
 
   const handleSend = async () => {
     if (!text && !img.file && !audioURL) return;
@@ -54,6 +69,7 @@ const Chat = () => {
       });
       setImg({ file: null, url: "" });
       setText("");
+      await updateTypingStatus(false);
       setAudioURL(null);
       deleteRecording();
     } catch (error) {
@@ -113,6 +129,11 @@ const Chat = () => {
     }
   }
 
+    const updateTypingStatus = async (status) => {
+      setTyping(status);
+      await updateDoc(doc(db, "users", currentUser.id), { typing: status });
+    };
+
   return (
     <>
       <div className="top">
@@ -120,7 +141,8 @@ const Chat = () => {
           <img src={user?.avatar || "./avatar.png"} alt="User Avatar" />
           <div className="texts">
             <span>{user?.username}</span>
-            <p>Lorem ipsum dolor, sit amet.</p>
+            <p>{isTyping ? "Typing..." : ""}</p>
+            <p>{user?.about}</p>
           </div>
         </div>
         <div className="icons">
@@ -129,6 +151,7 @@ const Chat = () => {
           <button onClick={handleBlockUser} className="bg-transparent border-none p-0">
             {isReceiverBlocked ? <FaUserSlash color="red" /> : <FaUser />}
           </button>      
+          
           </div>
       </div>
 
@@ -164,7 +187,9 @@ const Chat = () => {
           type="text"
           placeholder={isCurrentUserBlocked || isReceiverBlocked ? "You cannot send a message" : "Type a message..."}
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={(e) => { setText(e.target.value); updateTypingStatus(true); }}
+          onKeyDown={(e) => { if (e.key === "Enter") handleSend(); }}
+          onBlur={() => updateTypingStatus(false)}
           disabled={isCurrentUserBlocked || isReceiverBlocked}
         />
 
