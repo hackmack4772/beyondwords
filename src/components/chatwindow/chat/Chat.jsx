@@ -1,20 +1,20 @@
 import { useEffect, useRef, useState } from "react";
 import "./chat.css";
 import { useDispatch, useSelector } from "react-redux";
-import { arrayRemove, arrayUnion, doc, getDoc, onSnapshot, updateDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import { arrayRemove, arrayUnion, doc, getDoc, onSnapshot, updateDoc } from "firebase/firestore";
 import { db } from "../../../config/firebase";
 import { format } from "timeago.js";
 import EmojiPicker from "emoji-picker-react";
+import { FaMicrophone, FaStop, FaTrash, FaPaperPlane, FaUser, FaUserSlash } from "react-icons/fa";
 import { changeBlock } from "../../../features/use-chat-store/chatStore";
 import upload from "../../../utils/upload";
 
 const Chat = () => {
   const [recording, setRecording] = useState(false);
-  const [typing, setTyping] = useState(false);
+  const [audioBlob, setAudioBlob] = useState(null);
   const [audioURL, setAudioURL] = useState(null);
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
-  const endRef = useRef(null);
 
   const currentUser = useSelector((state) => state.user.currentUser);
   const dispatch = useDispatch();
@@ -23,8 +23,7 @@ const Chat = () => {
   const [img, setImg] = useState({ file: null, url: "" });
   const [text, setText] = useState("");
   const [open, setOpen] = useState(false);
-  const [isOnline, setIsOnline] = useState(false);
-  const [isTyping, setIsTyping] = useState(false);
+  const endRef = useRef(null);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -37,42 +36,26 @@ const Chat = () => {
     return () => unSub();
   }, [chatId]);
 
-  useEffect(() => {
-    if (user?.id) {
-      const userStatusRef = doc(db, "users", user.id);
-      const unSub = onSnapshot(userStatusRef, (docSnap) => {
-        if (docSnap.exists()) {
-          const lastSeen = docSnap.data().lastSeen;
-          setIsOnline(Date.now() - lastSeen?.toMillis() < 60000);
-          setIsTyping(docSnap.data().typing || false);
-        }
-      });
-      return () => unSub();
-    }
-  }, [user]);
-
-  const updateTypingStatus = async (status) => {
-    setTyping(status);
-    await updateDoc(doc(db, "users", currentUser.id), { typing: status });
-  };
-
-  const handleImg = (e) => {
-    if (e.target.files[0]) {
-      setImg({ file: e.target.files[0], url: URL.createObjectURL(e.target.files[0]) });
-    }
-  };
-
   const handleSend = async () => {
-    if (!text && !img.file) return;
+    if (!text && !img.file && !audioURL) return;
     let imgUrl = null;
     try {
-      if (img.file) imgUrl = await upload(img.file);
+      if (img.file) {
+        imgUrl = await upload(img.file);
+      }
       await updateDoc(doc(db, "chats", chatId), {
-        messages: arrayUnion({ senderId: currentUser.id, text, createdAt: new Date(), ...(imgUrl && { img: imgUrl }) })
+        messages: arrayUnion({
+          senderId: currentUser.id,
+          text,
+          createdAt: new Date(),
+          ...(imgUrl && { img: imgUrl }),
+          ...(audioURL && { audio: audioURL })
+        })
       });
-      setText("");
       setImg({ file: null, url: "" });
-      await updateTypingStatus(false);
+      setText("");
+      setAudioURL(null);
+      deleteRecording();
     } catch (error) {
       console.log(error);
     }
@@ -88,9 +71,12 @@ const Chat = () => {
       };
       mediaRecorderRef.current.onstop = async () => {
         if (audioChunksRef.current.length === 0) return;
-        const audioBlob = new Blob(audioChunksRef.current, { type: mediaRecorderRef.current.mimeType });
+        const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
         const cloudinaryURL = await upload(audioBlob);
-        if (cloudinaryURL) setAudioURL(cloudinaryURL);
+        if (cloudinaryURL) {
+          setAudioBlob(audioBlob);
+          setAudioURL(cloudinaryURL);
+        }
       };
       mediaRecorderRef.current.start();
       setRecording(true);
@@ -106,25 +92,54 @@ const Chat = () => {
     }
   };
 
+  const deleteRecording = () => {
+    setAudioBlob(null);
+    setAudioURL(null);
+  };
+  const handleBlockUser = async () => {
+
+    if (!user) return;
+    const updateDocRef = doc(db, "users", currentUser.id);
+    try {
+      await updateDoc(updateDocRef, {
+        blocked: isReceiverBlocked ? arrayRemove(user.id) : arrayUnion(user.id)
+      })
+      dispatch(changeBlock());
+
+
+    } catch (error) {
+      console.log(error);
+
+    }
+  }
+
   return (
     <>
       <div className="top">
         <div className="user">
           <img src={user?.avatar || "./avatar.png"} alt="User Avatar" />
           <div className="texts">
-            <span>{user?.username} {isOnline ? "(Online)" : "(Offline)"}</span>
-            <p>{isTyping ? "Typing..." : ""}</p>
+            <span>{user?.username}</span>
+            <p>Lorem ipsum dolor, sit amet.</p>
           </div>
         </div>
+        <div className="icons">
+          <img src="./phone.png" alt="Phone Icon" />
+          <img src="./video.png" alt="Video Icon" />
+          <button onClick={handleBlockUser} className="bg-transparent border-none p-0">
+            {isReceiverBlocked ? <FaUserSlash color="red" /> : <FaUser />}
+          </button>      
+          </div>
       </div>
 
       <div className="center">
-        {chat?.messages?.map((message) => (
-          <div key={message.createdAt} className={message.senderId === currentUser.id ? "message own" : "message"}>
+        {chat?.messages?.map((message, index) => (
+          <div key={index} className={message.senderId === currentUser?.id ? "message own" : "message"}>
             <div className="texts">
-              {message.img && <img src={message.img} alt="Message Attachment" />}
-              {message.text && <p>{message.text}</p>}
-              <span>{format(message.createdAt.toDate())}</span>
+              {message.img && <img src={message.img} alt="Attachment" />}
+              {message.audio && <audio controls src={message.audio} />}
+              {message.text && <p>{message.text}</p>
+              }              <span>{format(message.createdAt.toDate())}</span>
             </div>
           </div>
         ))}
@@ -133,23 +148,30 @@ const Chat = () => {
 
       <div className="bottom">
         <div className="icons">
-          <label htmlFor="file"><img src="./img.png" alt="Upload" /></label>
-          <input type="file" id="file" style={{ display: "none" }} onChange={handleImg} />
-          <button onClick={recording ? stopRecording : startRecording}>
-            <img src={recording ? "./stop.png" : "./mic.png"} alt="Mic" />
+          <label htmlFor="file">
+            <img src="./img.png" alt="Upload" />
+          </label>
+          <input type="file" id="file" style={{ display: "none" }} onChange={(e) => e.target.files[0] && setImg({ file: e.target.files[0], url: URL.createObjectURL(e.target.files[0]) })} />
+          <button onClick={recording ? stopRecording : startRecording} style={{ background: "none", border: "none", padding: 0 }}
+          >
+            {recording ? <FaStop /> : <FaMicrophone />}
           </button>
+          {audioBlob && <button onClick={deleteRecording} style={{ background: "none", border: "none", padding: 0 }}
+          ><FaTrash /></button>}
         </div>
+
         <input
           type="text"
           placeholder={isCurrentUserBlocked || isReceiverBlocked ? "You cannot send a message" : "Type a message..."}
           value={text}
-          onChange={(e) => { setText(e.target.value); updateTypingStatus(true); }}
-          onKeyDown={(e) => { if (e.key === "Enter") handleSend(); }}
-          onBlur={() => updateTypingStatus(false)}
+          onChange={(e) => setText(e.target.value)}
           disabled={isCurrentUserBlocked || isReceiverBlocked}
         />
+
+        {/* {audioBlob && <audio controls src={audioURL} />} */}
+
         <button className="sendButton" onClick={handleSend} disabled={isCurrentUserBlocked || isReceiverBlocked}>
-          <img src="./send.png" alt="Send" />
+          <FaPaperPlane />
         </button>
       </div>
     </>
