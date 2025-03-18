@@ -62,6 +62,8 @@ const App = () => {
 
     useEffect(() => {
         const unSub = onAuthStateChanged(auth, (user) => {
+            console.log(user,"useruseruser");
+            
             if (user) {
                 dispatch(fetchUserInfo(user.uid)).then(() => {
                     setAuthResolved(true);
