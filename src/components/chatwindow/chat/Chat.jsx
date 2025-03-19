@@ -8,6 +8,7 @@ import EmojiPicker from "emoji-picker-react";
 import { FaMicrophone, FaStop, FaTrash, FaPaperPlane, FaUser, FaUserSlash } from "react-icons/fa";
 import { changeBlock } from "../../../features/use-chat-store/chatStore";
 import upload from "../../../utils/upload";
+import Call from "../../call/Call";
 
 const Chat = () => {
   const [recording, setRecording] = useState(false);
@@ -148,6 +149,8 @@ const Chat = () => {
         <div className="icons">
           <img src="./phone.png" alt="Phone Icon" />
           <img src="./video.png" alt="Video Icon" />
+          <Call currentUser={currentUser} receiverId={user.id} />
+
           <button onClick={handleBlockUser} className="bg-transparent border-none p-0">
             {isReceiverBlocked ? <FaUserSlash color="red" /> : <FaUser />}
           </button>      
