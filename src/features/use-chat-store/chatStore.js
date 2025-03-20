@@ -1,37 +1,42 @@
 import { createSlice } from "@reduxjs/toolkit";
 
-const chatSlice = createSlice({
+const initialState = {
+    chatId: null,
+    user: null,
+    isCurrentUserBlocked: false,
+    isReceiverBlocked: false,
+};
+
+export const chatSlice = createSlice({
     name: "chat",
-    initialState: {
-        chatId: null,
-        user: null,
-        isCurrentUserBlocked: false,
-        isReceiverBlocked: false,
-    },
+    initialState,
     reducers: {
-        changeChat: (state, action) => {
-            const { currentUser, user, chatId } = action.payload;
-            if (user.blocked.includes(currentUser.id)) {
-                state.chatId = chatId,
-                    state.user = null;
-                state.isCurrentUserBlocked = true,
-                    state.isReceiverBlocked = false
-            }
-            else if (currentUser.blocked.includes(user.id)) {
-                state.chatId = chatId,
-                    state.user = user;
-                state.isCurrentUserBlocked = false,
-                    state.isReceiverBlocked = true
-            }
-            else {
-
-                state.chatId = chatId,
-                    state.user = user;
-                state.isCurrentUserBlocked = false,
-                    state.isReceiverBlocked = false
-
+        changeUser: (state, action) => {
+            const { chatId, user } = action.payload;
+            if (!user || !chatId) {
+                state.chatId = null;
+                state.user = null;
+                state.isCurrentUserBlocked = false;
+                state.isReceiverBlocked = false;
+                return;
             }
 
+            // Ensure user object has all required fields
+            const cleanUser = {
+                id: user.id,
+                username: user.username || 'Unknown User',
+                avatar: user.avatar || './avatar.png',
+                blocked: user.blocked || [],
+                about: user.about || ''
+            };
+
+            state.user = cleanUser;
+            state.chatId = chatId;
+            state.isCurrentUserBlocked = cleanUser.blocked.includes(cleanUser.id);
+            state.isReceiverBlocked = cleanUser.blocked.includes(cleanUser.id);
+        },
+        changeBlock: (state) => {
+            state.isReceiverBlocked = !state.isReceiverBlocked;
         },
         resetChat: (state) => {
             state.chatId = null;
@@ -39,13 +44,8 @@ const chatSlice = createSlice({
             state.isCurrentUserBlocked = false;
             state.isReceiverBlocked = false;
         },
-        changeBlock: (state) => {
-            state.isReceiverBlocked = !state.isReceiverBlocked;
-        },
-
-        
     },
 });
 
-export const { changeChat,resetChat,changeBlock } = chatSlice.actions;
+export const { changeUser, changeBlock, resetChat } = chatSlice.actions;
 export default chatSlice.reducer;

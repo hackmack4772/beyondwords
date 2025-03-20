@@ -39,25 +39,41 @@ const Chat = ({ onBackClick }) => {
   }, [chat?.messages]);
 
   useEffect(() => {
+    if (!chatId || !user) {
+      console.log('No chat or user selected');
+      return;
+    }
+
     const unSub = onSnapshot(doc(db, "chats", chatId), (res) => {
-      const newChatData = res.data() ?? [];
-      setChat(newChatData);
-      
-      // Check for new messages to show notifications
-      if (newChatData.messages?.length > 0 && chat?.messages?.length > 0) {
-        const lastMessage = newChatData.messages[newChatData.messages.length - 1];
-        const prevMessagesCount = chat.messages.length;
+      if (res.exists()) {
+        const newChatData = res.data();
+        setChat(newChatData);
         
-        // If there's a new message and it's not from the current user
-        if (newChatData.messages.length > prevMessagesCount && 
-            lastMessage.senderId !== currentUser.id) {
-          // Show notification for new message
-          NotificationManager.showMessageNotification(lastMessage, user, chatId);
+        // Check for new messages to show notifications
+        if (newChatData.messages?.length > 0 && chat?.messages?.length > 0) {
+          const lastMessage = newChatData.messages[newChatData.messages.length - 1];
+          const prevMessagesCount = chat.messages.length;
+          
+          // If there's a new message and it's not from the current user
+          if (newChatData.messages.length > prevMessagesCount && 
+              lastMessage.senderId !== currentUser.uid) {
+            // Show notification for new message
+            NotificationManager.showMessageNotification(lastMessage, user, chatId);
+          }
         }
+      } else {
+        // If chat doesn't exist, create it
+        setDoc(doc(db, "chats", chatId), {
+          messages: [],
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        });
+        setChat({ messages: [] });
       }
     });
+
     return () => unSub();
-  }, [chatId, currentUser.id, chat?.messages?.length, user]);
+  }, [chatId, currentUser.uid, chat?.messages?.length, user]);
 
   useEffect(() => {
     if (user?.id) {
@@ -229,11 +245,15 @@ const Chat = ({ onBackClick }) => {
           </button>
         )}
         <div className={styles.userInfo}>
-          <img src={user?.avatar || "./avatar.png"} alt="User Avatar" className={styles.avatar} />
+          <img 
+            src={user?.avatar || "./avatar.png"} 
+            alt={user?.username || "User"} 
+            className={styles.avatar} 
+          />
           <div className={styles.userTexts}>
-            <span className={styles.username}>{user?.username}</span>
+            <span className={styles.username}>{user?.username || "Unknown User"}</span>
             <p className={styles.status}>{isTyping ? "Typing..." : ""}</p>
-            <p className={styles.status}>{user?.about}</p>
+            <p className={styles.status}>{user?.about || ""}</p>
           </div>
         </div>
         <div className={styles.headerIcons}>

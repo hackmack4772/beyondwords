@@ -3,17 +3,17 @@ import "./chatList.css"
 import { useDispatch, useSelector } from "react-redux"
 import { doc, getDoc, onSnapshot, updateDoc } from "firebase/firestore"
 import { db } from "../../../config/firebase"
-import { changeChat } from "../../../features/use-chat-store/chatStore"
+import { changeUser } from "../../../features/use-chat-store/chatStore"
 import AddUser from "./adduser/AddUser"
 
-const ChatList = () => {
+const ChatList = ({ onChatSelect }) => {
     const [input, setInput] = useState('')
     const [addMode, setAddMode] = useState('')
     const [chats, setChats] = useState([])
     const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
     const currentUser = useSelector((state) => state.user.currentUser)
-    const {chatId}= useSelector((state) => state.chat)    
-    const dispatch=useDispatch()
+    const { chatId } = useSelector((state) => state.chat)    
+    const dispatch = useDispatch()
 
     useEffect(() => {
         const handleResize = () => {
@@ -25,75 +25,61 @@ const ChatList = () => {
     }, []);
 
     useEffect(() => {
-        const unSub = onSnapshot(doc(db, 'userchats', currentUser.id), async (res) => {
-            const items = res.data()?.chats || [];
-            const promises = items.map(async (item) => {
-                try {
-                    const { receiverId } = item
-                    const userDocRef = doc(db, "users", receiverId)
-                    const userDocSnap = await getDoc(userDocRef)
-                    if (!userDocSnap.exists) {
-                        console.warn("User Document Not found:", receiverId)
-                        return {
-                            ...item, user: {
-                                username: "Unknown",
-                                avatar: "./avatar.png", blocked: []
-                            }
-                        }
-                    }
-
-                    return { ...item, user: userDocSnap.data() }
-
-                } catch (error) {
-                    console.error("Error fetching user document:", error);
-                    return { ...item, user: { username: "Error", avatar: "./avatar.png", blocked: [] } };
+        const getChats = () => {
+            const unsub = onSnapshot(doc(db, "userChats", currentUser.uid), async (doc) => {
+                if (doc.exists()) {
+                    const data = doc.data();
+                    const chatArray = Object.entries(data).map(([id, chat]) => ({
+                        id,
+                        ...chat
+                    }));
+                    
+                    // Sort chats by last message timestamp
+                    chatArray.sort((a, b) => {
+                        const aTime = a.lastMessage?.createdAt?.toMillis() || 0;
+                        const bTime = b.lastMessage?.createdAt?.toMillis() || 0;
+                        return bTime - aTime;
+                    });
+                    
+                    setChats(chatArray);
                 }
-            })
+            });
 
-            const chatData = await Promise.all(promises)
-            setChats(chatData.sort((a, b) => b.updatedAt - a.updatedAt));
-        })
+            return () => {
+                unsub();
+            };
+        };
 
-        return () => {
-            unSub()
-        }
-
-    }, [currentUser.id])
+        currentUser.uid && getChats();
+    }, [currentUser.uid]);
 
     const filteredChats = useMemo(() => {
         return chats.filter((c) =>
-            c.user.username.toLowerCase().includes(input.toLowerCase())
+            c.userInfo?.username?.toLowerCase().includes(input.toLowerCase())
         );
+    }, [chats, input]);
 
-    }, [chats, input])
+    const handleSelect = (chat) => {
+        if (!chat || !chat.userInfo) {
+            console.error('Invalid chat data:', chat);
+            return;
+        }
 
-    const handleSelect = async (chat) => {
-        try {
-            const userChats = chats.map((item) => {
-                const { user, ...rest} = item;
-                return rest
-            })
-            const chatIndex=userChats.findIndex((item)=>(item.chatId ==chat.chatId))
-            userChats[chatIndex].isSeen=true;
-            const userChatsRef=doc(db,"userchats",currentUser.id);
-            await updateDoc(userChatsRef,{
-                chats:userChats
-            });
-            dispatch(changeChat({currentUser,chatId:chat.chatId,user:chat.user}))
-            
-            // In mobile view, after selecting a chat, make the chat component visible
-            if (isMobile) {
-                // Find and update the chat component visibility
-                const chatElement = document.querySelector('.chat');
-                if (chatElement) {
-                    chatElement.classList.add('visible');
-                }
-            }
+        // Create a clean user object with required fields
+        const userData = {
+            id: chat.userInfo.id,
+            username: chat.userInfo.username,
+            avatar: chat.userInfo.avatar,
+            blocked: chat.userInfo.blocked || [],
+            about: chat.userInfo.about || ''
+        };
 
-        } catch (error) {
-            console.log(error)
+        dispatch(changeUser({ chatId: chat.id, user: userData }));
+        if (onChatSelect) {
+            onChatSelect();
         }
     }
+
     return (
         <div className={`chatList ${isMobile && chatId ? 'hidden' : ''}`}>
             <div className="search">
@@ -113,30 +99,36 @@ const ChatList = () => {
                     onClick={() => setAddMode((prev) => !prev)}
                 />
             </div>
-            {filteredChats.map((chat) => (
-
-                <div key={
-                    chat.chatId}
-                    onClick={() => {handleSelect(chat)}}
-                    className={`item ${chatId === chat.chatId ? "selected" : ""}`}
+            <div className="chatItemsContainer">
+                {filteredChats.map((chat) => (
+                    <div
+                        key={chat.id}
+                        className={`item ${chat.id === chatId ? "selected" : ""}`}
+                        onClick={() => handleSelect(chat)}
                     >
-                    <img
-                        src={
-                            chat.user.blocked.includes(currentUser.id)
-                                ? "./avatar.png"
-                            : chat.user.avatar || "./avatar.png"}
-                    />
-                    <div className="texts">
-                        <span>
-                            {chat.user.blocked.includes(currentUser.id)
-                                ? "User" : chat.user.username
+                        <img
+                            src={
+                                chat.userInfo?.blocked?.includes(currentUser.uid)
+                                    ? "./avatar.png"
+                                    : chat.userInfo?.avatar || "./avatar.png"
                             }
-                        </span>
-                        <p>{chat.lastMessage}</p>
+                            alt={chat.userInfo?.username}
+                        />
+                        <div className="texts">
+                            <span>
+                                {chat.userInfo?.blocked?.includes(currentUser.uid)
+                                    ? "User" 
+                                    : chat.userInfo?.username || "Unknown User"
+                                }
+                            </span>
+                            <p>{chat.lastMessage?.text || "No messages yet"}</p>
+                        </div>
                     </div>
-                </div>))}
-                {addMode && <AddUser/>}
+                ))}
+            </div>
+            {addMode && <AddUser/>}
         </div>
     )
 }
+
 export default ChatList
