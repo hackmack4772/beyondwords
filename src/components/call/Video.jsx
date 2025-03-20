@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from "react";
 
-const Video = ({ stream, muted }) => {
+const Video = ({ stream, muted, className }) => {
   const videoRef = useRef(null);
 
   useEffect(() => {
@@ -9,7 +9,7 @@ const Video = ({ stream, muted }) => {
     }
   }, [stream]);
 
-  return <video ref={videoRef} autoPlay playsInline muted={muted} />;
+  return <video ref={videoRef} autoPlay playsInline muted={muted} className={className} />;
 };
 
 export default Video;

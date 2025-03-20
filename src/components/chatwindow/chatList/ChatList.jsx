@@ -10,9 +10,19 @@ const ChatList = () => {
     const [input, setInput] = useState('')
     const [addMode, setAddMode] = useState('')
     const [chats, setChats] = useState([])
+    const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
     const currentUser = useSelector((state) => state.user.currentUser)
     const {chatId}= useSelector((state) => state.chat)    
     const dispatch=useDispatch()
+
+    useEffect(() => {
+        const handleResize = () => {
+            setIsMobile(window.innerWidth <= 768);
+        };
+        
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     useEffect(() => {
         const unSub = onSnapshot(doc(db, 'userchats', currentUser.id), async (res) => {
@@ -70,13 +80,22 @@ const ChatList = () => {
                 chats:userChats
             });
             dispatch(changeChat({currentUser,chatId:chat.chatId,user:chat.user}))
+            
+            // In mobile view, after selecting a chat, make the chat component visible
+            if (isMobile) {
+                // Find and update the chat component visibility
+                const chatElement = document.querySelector('.chat');
+                if (chatElement) {
+                    chatElement.classList.add('visible');
+                }
+            }
 
         } catch (error) {
             console.log(error)
         }
     }
     return (
-        <div className="chatList">
+        <div className={`chatList ${isMobile && chatId ? 'hidden' : ''}`}>
             <div className="search">
                 <div className="searchBar">
                     <img src="./search.png" alt="" />

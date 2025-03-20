@@ -1,7 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
 import { collection, doc, setDoc, onSnapshot, deleteDoc, updateDoc, getDoc, arrayUnion } from "firebase/firestore";
 import Video from "./Video";
+import IncomingCall from "./IncomingCall";
 import { db } from "../../config/firebase";
+import styles from "./Call.module.css";
+import { FaPhone, FaPhoneSlash, FaVideo, FaMicrophone, FaMicrophoneSlash, FaVideoSlash } from "react-icons/fa";
+import NotificationManager from "../../utils/NotificationManager";
 
 const Call = ({ currentUser, receiverId }) => {
   const [peerConnection, setPeerConnection] = useState(null);
@@ -10,19 +14,68 @@ const Call = ({ currentUser, receiverId }) => {
   const [callId, setCallId] = useState(null);
   const [isCalling, setIsCalling] = useState(false);
   const [isReceivingCall, setIsReceivingCall] = useState(false);
+  const [caller, setCaller] = useState(null);
+  const [isVideoCall, setIsVideoCall] = useState(true);
+  const [isMuted, setIsMuted] = useState(false);
+  const [isVideoEnabled, setIsVideoEnabled] = useState(true);
+  const [callDuration, setCallDuration] = useState(0);
+  const durationTimerRef = useRef(null);
+  const receiverInfoRef = useRef(null);
+
+  useEffect(() => {
+    // Fetch receiver info once when component mounts
+    const fetchReceiverInfo = async () => {
+      if (receiverId) {
+        try {
+          const receiverDoc = await getDoc(doc(db, "users", receiverId));
+          if (receiverDoc.exists()) {
+            receiverInfoRef.current = receiverDoc.data();
+          }
+        } catch (error) {
+          console.error("Error fetching receiver info:", error);
+        }
+      }
+    };
+    
+    fetchReceiverInfo();
+  }, [receiverId]);
 
   useEffect(() => {
     const fetchIncomingCall = () => {
       const callQuery = collection(db, "calls");
-      const unsubscribe = onSnapshot(callQuery, (snapshot) => {
-        snapshot.forEach((doc) => {
-          const data = doc.data();
-          if (data.receiverId === currentUser.id && !data.answer) {
-            console.log("Incoming call detected:", doc.id, data);
-            setIsReceivingCall(true);
-            setCallId(doc.id);
+      const unsubscribe = onSnapshot(callQuery, async (snapshot) => {
+        for (const docChange of snapshot.docChanges()) {
+          if (docChange.type === "added") {
+            const data = docChange.doc.data();
+            if (data.receiverId === currentUser.id && !data.answer) {
+              console.log("Incoming call detected:", docChange.doc.id, data);
+              
+              // Fetch caller information
+              try {
+                const callerDoc = await getDoc(doc(db, "users", data.callerId));
+                if (callerDoc.exists()) {
+                  const callerData = callerDoc.data();
+                  setCaller(callerData);
+                  
+                  // Show notification for incoming call
+                  if (!document.hasFocus()) {
+                    NotificationManager.showCallNotification(
+                      callerData,
+                      docChange.doc.id,
+                      data.isVideo !== false
+                    );
+                  }
+                }
+              } catch (error) {
+                console.error("Error fetching caller info:", error);
+              }
+              
+              setIsReceivingCall(true);
+              setCallId(docChange.doc.id);
+              setIsVideoCall(data.isVideo !== false); // Default to video call if not specified
+            }
           }
-        });
+        }
       });
 
       return () => {
@@ -34,10 +87,35 @@ const Call = ({ currentUser, receiverId }) => {
     fetchIncomingCall();
   }, [currentUser.id]);
 
+  useEffect(() => {
+    // Start call duration timer when call is connected
+    if (remoteStream && localStream) {
+      durationTimerRef.current = setInterval(() => {
+        setCallDuration(prev => prev + 1);
+      }, 1000);
+    }
+    
+    return () => {
+      if (durationTimerRef.current) {
+        clearInterval(durationTimerRef.current);
+      }
+    };
+  }, [remoteStream, localStream]);
+
+  const formatCallDuration = (seconds) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+  };
+
   const getUserMedia = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: isVideoCall, 
+        audio: true 
+      });
       setLocalStream(stream);
+      setIsVideoEnabled(isVideoCall);
       return stream;
     } catch (error) {
       console.error("Error accessing media devices:", error);
@@ -83,9 +161,12 @@ const Call = ({ currentUser, receiverId }) => {
     return pc;
   };
 
-  const startCall = async () => {
+  const startCall = async (videoEnabled = true) => {
     setIsCalling(true);
-    console.log("Starting call to:", receiverId);
+    setIsVideoCall(videoEnabled);
+    setCallDuration(0);
+    console.log(`Starting ${videoEnabled ? 'video' : 'audio'} call to:`, receiverId);
+    
     const stream = await getUserMedia();
     if (!stream) return;
 
@@ -106,7 +187,9 @@ const Call = ({ currentUser, receiverId }) => {
       offer: { type: offer.type, sdp: offer.sdp },
       callerId: currentUser.id,
       receiverId,
-      iceCandidates: [], // Fixed: Initialize iceCandidates as an empty array
+      isVideo: videoEnabled,
+      timestamp: new Date(),
+      iceCandidates: [],
     });
 
     onSnapshot(callDoc, async (snapshot) => {
@@ -119,7 +202,7 @@ const Call = ({ currentUser, receiverId }) => {
           console.error("Error setting remote description (answer):", error);
         }
       }
-      const iceCandidates = data?.iceCandidates || []; // Fixed: Default to an empty array
+      const iceCandidates = data?.iceCandidates || [];
       for (const candidate of iceCandidates) {
         try {
           await pc.addIceCandidate(new RTCIceCandidate(candidate));
@@ -133,6 +216,7 @@ const Call = ({ currentUser, receiverId }) => {
 
   const acceptCall = async () => {
     setIsReceivingCall(false);
+    setCallDuration(0);
     console.log("Accepting call with ID:", callId);
     const stream = await getUserMedia();
     if (!stream) return;
@@ -157,7 +241,7 @@ const Call = ({ currentUser, receiverId }) => {
 
         onSnapshot(callDoc, (snapshot) => {
           const data = snapshot.data();
-          const iceCandidates = data?.iceCandidates || []; // Fixed: Default to an empty array
+          const iceCandidates = data?.iceCandidates || [];
           for (const candidate of iceCandidates) {
             try {
               pc.addIceCandidate(new RTCIceCandidate(candidate));
@@ -169,7 +253,6 @@ const Call = ({ currentUser, receiverId }) => {
         });
       } else {
         console.error("Offer not found in call document:", callId);
-        // Optionally handle this case, maybe end the call
       }
     } catch (error) {
       console.error("Error fetching call data:", error);
@@ -189,6 +272,7 @@ const Call = ({ currentUser, receiverId }) => {
     setLocalStream(null);
     setRemoteStream(null);
     setPeerConnection(null);
+    setCallDuration(0);
 
     if (callId) {
       try {
@@ -203,27 +287,155 @@ const Call = ({ currentUser, receiverId }) => {
     setIsReceivingCall(false);
   };
 
+  const rejectCall = async () => {
+    console.log("Rejecting call with ID:", callId);
+    if (callId) {
+      try {
+        await updateDoc(doc(db, "calls", callId), {
+          rejected: true
+        });
+        console.log("Call rejected:", callId);
+        setIsReceivingCall(false);
+      } catch (error) {
+        console.error("Error rejecting call:", error);
+      }
+    }
+  };
+
+  const toggleMute = () => {
+    if (localStream) {
+      const audioTracks = localStream.getAudioTracks();
+      if (audioTracks.length > 0) {
+        const enabled = !isMuted;
+        audioTracks[0].enabled = enabled;
+        setIsMuted(!enabled);
+      }
+    }
+  };
+
+  const toggleVideo = () => {
+    if (localStream) {
+      const videoTracks = localStream.getVideoTracks();
+      if (videoTracks.length > 0) {
+        const enabled = !isVideoEnabled;
+        videoTracks[0].enabled = enabled;
+        setIsVideoEnabled(enabled);
+      }
+    }
+  };
+
   return (
-    <div>
-      {isCalling && <p>Calling...</p>}
+    <div className={styles.callContainer}>
+      {/* Incoming call overlay */}
       {isReceivingCall && (
-        <div>
-          <p>Incoming Call...</p>
-          <button onClick={acceptCall}>Accept</button>
-          <button onClick={endCall}>Reject</button>
+        <IncomingCall 
+          caller={caller}
+          onAccept={acceptCall}
+          onReject={rejectCall}
+          isVideoCall={isVideoCall}
+        />
+      )}
+      
+      {/* Call buttons */}
+      {!isCalling && !isReceivingCall && (
+        <div className={styles.callButtons}>
+          <button 
+            className={`${styles.callButton} ${styles.audioCall}`} 
+            onClick={() => startCall(false)} 
+            disabled={!receiverId}
+            title="Audio Call"
+          >
+            <FaPhone />
+          </button>
+          <button 
+            className={`${styles.callButton} ${styles.videoCall}`} 
+            onClick={() => startCall(true)} 
+            disabled={!receiverId}
+            title="Video Call"
+          >
+            <FaVideo />
+          </button>
         </div>
       )}
-      {!isCalling && !isReceivingCall && (
-        <button onClick={startCall} disabled={!receiverId}>
-          Call
-        </button>
+      
+      {/* Active call interface */}
+      {(localStream || remoteStream) && (
+        <div className={styles.activeCall}>
+          {/* Call duration */}
+          <div className={styles.callDuration}>
+            {formatCallDuration(callDuration)}
+          </div>
+          
+          <div className={styles.videoContainer}>
+            {/* Remote video or fallback */}
+            {remoteStream ? (
+              <Video stream={remoteStream} className={styles.remoteVideo} />
+            ) : (
+              <div className={styles.userInfo}>
+                <img 
+                  src={receiverInfoRef.current?.avatar || "./avatar.png"} 
+                  alt="Contact" 
+                />
+                <span>{receiverInfoRef.current?.username || "Calling..."}</span>
+              </div>
+            )}
+            
+            {/* Local video */}
+            {localStream && isVideoCall && (
+              <Video stream={localStream} className={styles.localVideo} muted />
+            )}
+          </div>
+          
+          {/* Call controls */}
+          <div className={styles.callControls}>
+            <button 
+              className={`${styles.callButton}`} 
+              onClick={toggleMute}
+              title={isMuted ? "Unmute" : "Mute"}
+            >
+              {isMuted ? <FaMicrophoneSlash /> : <FaMicrophone />}
+            </button>
+            
+            {isVideoCall && (
+              <button 
+                className={`${styles.callButton}`} 
+                onClick={toggleVideo}
+                title={isVideoEnabled ? "Turn off camera" : "Turn on camera"}
+              >
+                {isVideoEnabled ? <FaVideo /> : <FaVideoSlash />}
+              </button>
+            )}
+            
+            <button 
+              className={`${styles.callButton} ${styles.endCall}`} 
+              onClick={endCall}
+              title="End call"
+            >
+              <FaPhoneSlash />
+            </button>
+          </div>
+        </div>
       )}
-      {(isCalling || isReceivingCall) && (
-        <button onClick={endCall}>End Call</button>
+      
+      {/* Calling status */}
+      {isCalling && !remoteStream && (
+        <div className={styles.callingStatus}>
+          <div className={styles.userInfo}>
+            <img 
+              src={receiverInfoRef.current?.avatar || "./avatar.png"} 
+              alt="Contact" 
+            />
+            <span>{receiverInfoRef.current?.username || "Calling..."}</span>
+          </div>
+          
+          <button 
+            className={`${styles.callButton} ${styles.endCall}`} 
+            onClick={endCall}
+          >
+            <FaPhoneSlash />
+          </button>
+        </div>
       )}
-
-      {localStream && <Video stream={localStream} muted />}
-      {remoteStream && <Video stream={remoteStream} />}
     </div>
   );
 };

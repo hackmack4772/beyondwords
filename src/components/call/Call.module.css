@@ -1,0 +1,292 @@
+.callContainer {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Call Buttons */
+.callButtons {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.callButton {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.callButton:active {
+  transform: scale(0.95);
+}
+
+.callButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.audioCall {
+  background-color: #128C7E;
+  color: white;
+}
+
+.audioCall:hover:not(:disabled) {
+  background-color: #075E54;
+}
+
+.videoCall {
+  background-color: #25D366;
+  color: white;
+}
+
+.videoCall:hover:not(:disabled) {
+  background-color: #1da552;
+}
+
+.endCall {
+  background-color: #FF4C4C;
+  color: white;
+}
+
+.endCall:hover {
+  background-color: #e64040;
+}
+
+/* Active Call */
+.activeCall {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: #222;
+  z-index: 900;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.videoContainer {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.5));
+}
+
+.remoteVideo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.localVideo {
+  position: absolute;
+  bottom: 100px;
+  right: 20px;
+  width: 120px;
+  height: 160px;
+  border-radius: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  object-fit: cover;
+  z-index: 10;
+  transition: all 0.3s ease;
+}
+
+.localVideo:hover {
+  transform: scale(1.05);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.callControls {
+  position: absolute;
+  bottom: 30px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  gap: 1.5rem;
+  padding: 0 1rem;
+  z-index: 20;
+}
+
+.activeCall .callButton {
+  width: 60px;
+  height: 60px;
+  font-size: 1.5rem;
+  background-color: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(5px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.2s ease;
+}
+
+.activeCall .callButton:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+.activeCall .endCall {
+  background-color: #FF4C4C;
+}
+
+.activeCall .endCall:hover {
+  background-color: #e64040;
+}
+
+.callDuration {
+  position: absolute;
+  top: 20px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  color: white;
+  font-size: 1rem;
+  font-weight: 500;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  z-index: 20;
+  padding: 0.5rem;
+  background-color: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(5px);
+}
+
+/* Calling Status */
+.callingStatus {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: linear-gradient(rgba(18, 140, 126, 0.8), rgba(7, 94, 84, 0.9));
+  z-index: 900;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: white;
+}
+
+.callingStatus p {
+  font-size: 1.5rem;
+  margin-bottom: 2rem;
+  animation: pulse 1.5s infinite;
+  font-weight: 500;
+}
+
+.callingStatus .callButton {
+  background-color: #FF4C4C;
+  width: 60px;
+  height: 60px;
+  font-size: 1.5rem;
+}
+
+.userInfo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 3rem;
+}
+
+.userInfo img {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid white;
+  animation: pulse 2s infinite;
+}
+
+.userInfo span {
+  font-size: 1.75rem;
+  color: white;
+  font-weight: 500;
+}
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+  .activeCall .callButton {
+    width: 52px;
+    height: 52px;
+    font-size: 1.25rem;
+  }
+
+  .localVideo {
+    width: 90px;
+    height: 120px;
+    bottom: 90px;
+    right: 10px;
+  }
+  
+  .userInfo img {
+    width: 85px;
+    height: 85px;
+  }
+  
+  .userInfo span {
+    font-size: 1.5rem;
+  }
+}
+
+/* Small mobile screens */
+@media (max-width: 480px) {
+  .callButtons {
+    gap: 0.5rem;
+  }
+
+  .callButton {
+    width: 36px;
+    height: 36px;
+    font-size: 1rem;
+  }
+
+  .localVideo {
+    width: 80px;
+    height: 100px;
+    bottom: 80px;
+  }
+  
+  .activeCall .callButton {
+    width: 48px;
+    height: 48px;
+    font-size: 1.125rem;
+  }
+  
+  .callControls {
+    gap: 1rem;
+  }
+}
+
+/* Animations */
+@keyframes pulse {
+  0% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.7;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+} 

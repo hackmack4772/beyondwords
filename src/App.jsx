@@ -8,6 +8,7 @@ import { fetchUserInfo } from "./features/user-data/usersdata";
 import List from "./components/chatwindow/chat-layout/List";
 import styled from "styled-components";
 import { motion } from "framer-motion";
+import NotificationManager from "./utils/NotificationManager";
 
 const Container = styled(motion.div)`
   width: 100vw;
@@ -54,11 +55,59 @@ const Loading = styled(motion.div)`
   }
 `;
 
+const NotificationBanner = styled(motion.div)`
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: ${({ theme }) => theme.bg};
+  padding: 15px 25px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  z-index: 9999;
+  
+  button {
+    background-color: #128C7E;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+  }
+`;
 
 const App = () => {
     const [isAuthResolved, setAuthResolved] = useState(false);
+    const [showNotificationPrompt, setShowNotificationPrompt] = useState(false);
     const dispatch = useDispatch();
     const currentUser = useSelector((state) => state?.user?.currentUser);
+
+    // Initialize notifications
+    useEffect(() => {
+        const initializeNotifications = async () => {
+            if (NotificationManager.isSupported()) {
+                // Register service worker
+                await NotificationManager.registerServiceWorker();
+                
+                // Check if we need to prompt for notification permission
+                if (Notification.permission === 'default' && currentUser) {
+                    setShowNotificationPrompt(true);
+                }
+            }
+        };
+        
+        initializeNotifications();
+    }, [currentUser]);
+
+    const handleRequestNotificationPermission = async () => {
+        const granted = await NotificationManager.requestPermission();
+        setShowNotificationPrompt(false);
+        console.log('Notification permission granted:', granted);
+    };
 
     useEffect(() => {
         const unSub = onAuthStateChanged(auth, (user) => {
@@ -83,12 +132,25 @@ const App = () => {
             <Container initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
                 <Loading initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
                     <div className="spinner" />
-                </Loading>      </Container>
+                </Loading>
+            </Container>
         );
     }
 
     return (
         <Container initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+            {showNotificationPrompt && (
+                <NotificationBanner 
+                    initial={{ y: -50, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                >
+                    <span>Enable notifications to stay updated with new messages and calls</span>
+                    <button onClick={handleRequestNotificationPermission}>
+                        Enable
+                    </button>
+                </NotificationBanner>
+            )}
+
             <Routes>
                 <Route
                     path="/login"
