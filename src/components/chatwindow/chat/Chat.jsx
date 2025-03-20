@@ -5,11 +5,12 @@ import { arrayRemove, arrayUnion, doc, getDoc, onSnapshot, updateDoc, setDoc, se
 import { db } from "../../../config/firebase";
 import { format } from "timeago.js";
 import EmojiPicker from "emoji-picker-react";
-import { FaMicrophone, FaStop, FaTrash, FaPaperPlane, FaUser, FaUserSlash, FaArrowLeft } from "react-icons/fa";
+import { FaMicrophone, FaStop, FaTrash, FaPaperPlane, FaUser, FaUserSlash, FaArrowLeft, FaPaperclip, FaSmile } from "react-icons/fa";
 import { changeBlock } from "../../../features/use-chat-store/chatStore";
 import upload from "../../../utils/upload";
 import Call from "../../call/Call";
 import NotificationManager from "../../../utils/NotificationManager";
+
 
 const Chat = ({ onBackClick }) => {
   const [recording, setRecording] = useState(false);
@@ -47,6 +48,8 @@ const Chat = ({ onBackClick }) => {
     const unSub = onSnapshot(doc(db, "chats", chatId), (res) => {
       if (res.exists()) {
         const newChatData = res.data();
+        console.log(newChatData,"newChatData");
+        
         setChat(newChatData);
         
         // Check for new messages to show notifications
@@ -56,7 +59,7 @@ const Chat = ({ onBackClick }) => {
           
           // If there's a new message and it's not from the current user
           if (newChatData.messages.length > prevMessagesCount && 
-              lastMessage.senderId !== currentUser.uid) {
+              lastMessage.senderId !== currentUser.id) {
             // Show notification for new message
             NotificationManager.showMessageNotification(lastMessage, user, chatId);
           }
@@ -73,7 +76,7 @@ const Chat = ({ onBackClick }) => {
     });
 
     return () => unSub();
-  }, [chatId, currentUser.uid, chat?.messages?.length, user]);
+  }, [chatId, currentUser.id, chat?.messages?.length, user]);
 
   useEffect(() => {
     if (user?.id) {
@@ -261,7 +264,7 @@ const Chat = ({ onBackClick }) => {
             <Call currentUser={currentUser} receiverId={user?.id} />
           </div>
           <button onClick={handleBlockUser} className={styles.iconButton}>
-            {isReceiverBlocked ? <FaUserSlash color="red" /> : <FaUser />}
+            {isReceiverBlocked ? <FaUserSlash color="red" size={22} /> : <FaUser color="#128C7E" size={22} />}
           </button>
         </div>
       </div>
@@ -300,7 +303,7 @@ const Chat = ({ onBackClick }) => {
                 </div>
               ) : (
                 <>
-                  {message.img && <img src={message.img} alt="Attachment" className={styles.messageImage} />}
+                  {message.img && <img  src={message.img} alt="Attachment" className={styles.messageImage} />}
                   {message.audio && <audio controls src={message.audio} className={styles.messageAudio} />}
                   {message.text && (
                     <div className={styles.messageText}>
@@ -332,7 +335,7 @@ const Chat = ({ onBackClick }) => {
         <div className={styles.inputIcons}>
           <label htmlFor="file">
             <button className={styles.inputButton}>
-              <img src="./img.png" alt="Upload" />
+            <FaPaperclip color="black" />
             </button>
           </label>
           <input type="file" id="file" style={{ display: "none" }} onChange={handleImg} />
@@ -340,7 +343,7 @@ const Chat = ({ onBackClick }) => {
             className={styles.inputButton} 
             onClick={recording ? stopRecording : startRecording}
           >
-            {recording ? <FaStop /> : <FaMicrophone />}
+            {recording ? <FaStop color="black" /> : <FaMicrophone  color="black"/>}
           </button>
           {audioURL && (
             <button className={styles.inputButton} onClick={deleteRecording}>
@@ -348,7 +351,7 @@ const Chat = ({ onBackClick }) => {
             </button>
           )}
           <button className={styles.inputButton} onClick={() => setOpen(!open)}>
-            <img src="./emoji.png" alt="Emoji" />
+          <FaSmile color="black" />
           </button>
         </div>
         

@@ -9,7 +9,8 @@ import "./list.css";
 
 const List = () => {
   const { currentUser } = useSelector((state) => state.user);
-  const { chat, chatID } = useSelector((state) => state.chat);
+  const { chat, chatId:chatID } = useSelector((state) => state.chat);
+  
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [showChatList, setShowChatList] = useState(true);
   const [showChat, setShowChat] = useState(false);
@@ -42,7 +43,8 @@ const List = () => {
   // Check for unread messages when component loads
   useEffect(() => {
     const getChats = () => {
-      const unsub = onSnapshot(doc(db, "userChats", currentUser.uid), (doc) => {
+      
+      const unsub = onSnapshot(doc(db, "userchats", currentUser.id), (doc) => {
         const data = doc.data();
         
         if (!data) return;
@@ -60,8 +62,8 @@ const List = () => {
       };
     };
 
-    currentUser.uid && getChats();
-  }, [currentUser.uid]);
+    currentUser.id && getChats();
+  }, [currentUser.id]);
 
   // Handle chat selection
   const handleChatSelect = () => {

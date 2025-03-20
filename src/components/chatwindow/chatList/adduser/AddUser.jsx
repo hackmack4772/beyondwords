@@ -68,7 +68,7 @@ const AddUser = () => {
           });
           console.log("Chat created successfully in 'chats' collection.");
       
-          // Step 2: Update userChats collection for the selected user
+          // Step 2: Update userchats collection for the selected user
           await updateDoc(doc(userChatsRef, user.id), {
             chats: arrayUnion({
               chatId: newChatRef.id,
@@ -79,7 +79,7 @@ const AddUser = () => {
           });
           console.log("UserChats updated for the selected user.");
       
-          // Step 3: Update userChats collection for the current user
+          // Step 3: Update userchats collection for the current user
           await updateDoc(doc(userChatsRef, currentUser.id), {
             chats: arrayUnion({
               chatId: newChatRef.id,

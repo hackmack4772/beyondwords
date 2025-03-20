@@ -11,7 +11,7 @@ export const chatSlice = createSlice({
     name: "chat",
     initialState,
     reducers: {
-        changeUser: (state, action) => {
+        changeUser: (state, action) => {            
             const { chatId, user } = action.payload;
             if (!user || !chatId) {
                 state.chatId = null;
@@ -30,10 +30,14 @@ export const chatSlice = createSlice({
                 about: user.about || ''
             };
 
+
+            
+
             state.user = cleanUser;
             state.chatId = chatId;
             state.isCurrentUserBlocked = cleanUser.blocked.includes(cleanUser.id);
             state.isReceiverBlocked = cleanUser.blocked.includes(cleanUser.id);
+
         },
         changeBlock: (state) => {
             state.isReceiverBlocked = !state.isReceiverBlocked;

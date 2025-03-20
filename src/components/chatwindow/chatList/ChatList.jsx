@@ -25,56 +25,63 @@ const ChatList = ({ onChatSelect }) => {
     }, []);
 
     useEffect(() => {
-        const getChats = () => {
-            const unsub = onSnapshot(doc(db, "userChats", currentUser.uid), async (doc) => {
-                if (doc.exists()) {
-                    const data = doc.data();
-                    const chatArray = Object.entries(data).map(([id, chat]) => ({
-                        id,
-                        ...chat
-                    }));
-                    
-                    // Sort chats by last message timestamp
-                    chatArray.sort((a, b) => {
-                        const aTime = a.lastMessage?.createdAt?.toMillis() || 0;
-                        const bTime = b.lastMessage?.createdAt?.toMillis() || 0;
-                        return bTime - aTime;
-                    });
-                    
-                    setChats(chatArray);
+        const unSub = onSnapshot(doc(db, 'userchats', currentUser.id), async (res) => {
+            const items = res.data()?.chats || [];
+            const promises = items.map(async (item) => {
+                try {
+                    const { receiverId } = item
+                    const userDocRef = doc(db, "users", receiverId)
+                    const userDocSnap = await getDoc(userDocRef)
+                    if (!userDocSnap.exists) {
+                        console.warn("User Document Not found:", receiverId)
+                        return {
+                            ...item, user: {
+                                username: "Unknown",
+                                avatar: "./avatar.png", blocked: []
+                            }
+                        }
+                    }
+
+                    return { ...item, user: userDocSnap.data() }
+
+                } catch (error) {
+                    console.error("Error fetching user document:", error);
+                    return { ...item, user: { username: "Error", avatar: "./avatar.png", blocked: [] } };
                 }
-            });
+            })
 
-            return () => {
-                unsub();
-            };
-        };
+            const chatData = await Promise.all(promises)
+            setChats(chatData.sort((a, b) => b.updatedAt - a.updatedAt));
+        })
 
-        currentUser.uid && getChats();
-    }, [currentUser.uid]);
+        return () => {
+            unSub()
+        }
 
-    const filteredChats = useMemo(() => {
+    }, [currentUser.id])
+
+    const filteredChats = useMemo(() => {        
         return chats.filter((c) =>
-            c.userInfo?.username?.toLowerCase().includes(input.toLowerCase())
+            c.user?.username?.toLowerCase().includes(input.toLowerCase())
         );
     }, [chats, input]);
 
     const handleSelect = (chat) => {
-        if (!chat || !chat.userInfo) {
+        if (!chat || !chat.user) {
             console.error('Invalid chat data:', chat);
             return;
         }
 
         // Create a clean user object with required fields
         const userData = {
-            id: chat.userInfo.id,
-            username: chat.userInfo.username,
-            avatar: chat.userInfo.avatar,
-            blocked: chat.userInfo.blocked || [],
-            about: chat.userInfo.about || ''
+            id: chat.user.id,
+            username: chat.user.username,
+            avatar: chat.user.avatar,
+            blocked: chat.user.blocked || [],
+            about: chat.user.about || ''
         };
 
-        dispatch(changeUser({ chatId: chat.id, user: userData }));
+        dispatch(changeUser({ chatId: chat.chatId, user: userData }));
         if (onChatSelect) {
             onChatSelect();
         }
@@ -100,7 +107,7 @@ const ChatList = ({ onChatSelect }) => {
                 />
             </div>
             <div className="chatItemsContainer">
-                {filteredChats.map((chat) => (
+                {filteredChats.length && filteredChats.map((chat) => (
                     <div
                         key={chat.id}
                         className={`item ${chat.id === chatId ? "selected" : ""}`}
@@ -108,17 +115,17 @@ const ChatList = ({ onChatSelect }) => {
                     >
                         <img
                             src={
-                                chat.userInfo?.blocked?.includes(currentUser.uid)
+                                chat.user?.blocked?.includes(currentUser.id)
                                     ? "./avatar.png"
-                                    : chat.userInfo?.avatar || "./avatar.png"
+                                    : chat.user?.avatar || "./avatar.png"
                             }
-                            alt={chat.userInfo?.username}
+                            alt={chat.user?.username}
                         />
                         <div className="texts">
                             <span>
-                                {chat.userInfo?.blocked?.includes(currentUser.uid)
+                                {chat.user?.blocked?.includes(currentUser.id)
                                     ? "User" 
-                                    : chat.userInfo?.username || "Unknown User"
+                                    : chat.user?.username || "Unknown User"
                                 }
                             </span>
                             <p>{chat.lastMessage?.text || "No messages yet"}</p>

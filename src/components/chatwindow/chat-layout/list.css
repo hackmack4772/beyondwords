@@ -229,7 +229,7 @@ body {
 
 /* Ensure images and media content are responsive */
 img, video, audio {
-  max-width: 100%;
+  max-width:40%;
   height: auto;
 }
 
