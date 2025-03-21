@@ -1,123 +1,174 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { db, auth } from "../../../../config/firebase";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
-import { updateProfile, onAuthStateChanged } from "firebase/auth";
-import "./editProfile.css";
-import upload from "../../../../utils/upload";
+import { db, storage } from "../../../../config/firebase";
+import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
+import { useNotification } from "../../../../contexts/NotificationContext";
+import styles from "./EditProfile.module.css";
 import { fetchUserInfo } from "../../../../features/user-data/usersdata";
+import { updateUserProfile } from "../../../../features/user-slice/userSlice";
 
 const EditProfile = ({ setShowEditMode }) => {
-    const currentUser = useSelector((state) => state.user.currentUser);
-    const [user, setUser] = useState(null);
-    const [formData, setFormData] = useState({ 
-        username: "", 
-        name: "",
-        about: "",
-        avatar: "" 
-    });
-    const [avatarFile, setAvatarFile] = useState(null);
-    const [loading, setLoading] = useState(false);
     const dispatch = useDispatch();
+    const currentUser = useSelector((state) => state.user.currentUser);
+    const { showSuccess, showError } = useNotification();
+    const [user, setUser] = useState(null);
+    const [formData, setFormData] = useState({
+        username: "",
+        about: "",
+        avatar: null,
+    });
+    const [previewUrl, setPreviewUrl] = useState("");
+    const [loading, setLoading] = useState(false);
 
     useEffect(() => {
-        const fetchUser = async () => {
-            if (!currentUser) return;
+        const getUserInfo = async () => {
+            if (!currentUser?.uid) return;
+            
             try {
-                const userDoc = await getDoc(doc(db, "users", currentUser.id));
-                if (userDoc.exists()) {
-                    setUser(userDoc.data());
-                    setFormData({
-                        username: userDoc.data().username || "",
-                        name: userDoc.data().name || "",
-                        about: userDoc.data().about || "",
-                        avatar: userDoc.data().avatar || "./avatar.png"
-                    });
-                }
+                const userInfo = await fetchUserInfo(currentUser.uid);
+                setUser(userInfo);
+                setFormData({
+                    username: userInfo?.username || "",
+                    about: userInfo?.about || "",
+                    avatar: null,
+                });
             } catch (error) {
-                console.error("Error fetching user data:", error);
+                console.error("Error fetching user info:", error);
+                showError("Failed to load user information");
             }
         };
-
-        fetchUser();
-
-        // Sync with Firebase Auth state
-        const unsubscribe = onAuthStateChanged(auth, (updatedUser) => {
-            if (updatedUser) {
-                setFormData((prev) => ({
-                    ...prev,
-                    username: updatedUser.displayName || prev.username,
-                    avatar: updatedUser.photoURL || prev.avatar
-                }));
-            }
-        });
-
-        return () => unsubscribe();
-    }, [currentUser]);
+        getUserInfo();
+    }, [currentUser?.uid, showError]);
 
     const handleChange = (e) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
-    };
-
-    const handleAvatarChange = (e) => {
-        if (e.target.files[0]) {
-            setAvatarFile(e.target.files[0]);
+        const { name, value, files } = e.target;
+        if (name === "avatar" && files?.[0]) {
+            setFormData(prev => ({
+                ...prev,
+                avatar: files[0],
+            }));
+            setPreviewUrl(URL.createObjectURL(files[0]));
+        } else {
+            setFormData(prev => ({
+                ...prev,
+                [name]: value,
+            }));
         }
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
-        try {
-            let avatarURL = formData.avatar;
 
-            // Upload new avatar if changed
-            if (avatarFile) {
-                avatarURL = await upload(avatarFile);
+        try {
+            let avatarUrl = user?.avatar;
+
+            if (formData.avatar) {
+                const storageRef = ref(storage, `avatars/${currentUser.uid}`);
+                const uploadTask = uploadBytesResumable(storageRef, formData.avatar);
+
+                avatarUrl = await new Promise((resolve, reject) => {
+                    uploadTask.on(
+                        "state_changed",
+                        null,
+                        reject,
+                        async () => {
+                            try {
+                                const url = await getDownloadURL(uploadTask.snapshot.ref);
+                                resolve(url);
+                            } catch (error) {
+                                reject(error);
+                            }
+                        }
+                    );
+                });
             }
 
-            // Update Firebase Auth profile
-            await updateProfile(auth.currentUser, {
-                displayName: formData.username,
-                photoURL: avatarURL
-            });
+            const userRef = doc(db, "users", currentUser.uid);
+            const updatedData = {
+                username: formData.username || user?.username,
+                about: formData.about || user?.about,
+                avatar: avatarUrl,
+                updatedAt: new Date()
+            };
 
-            // Update Firestore user document
-            await updateDoc(doc(db, "users", currentUser.id), {
-                username: formData.username,
-                name: formData.name,
-                about: formData.about,
-                avatar: avatarURL
-            });
+            await updateDoc(userRef, updatedData);
 
+            // Update Redux store
+            dispatch(updateUserProfile({
+                ...currentUser,
+                ...updatedData
+            }));
+
+            showSuccess("Profile updated successfully!");
+            setShowEditMode(false);
         } catch (error) {
             console.error("Error updating profile:", error);
+            showError("Failed to update profile. Please try again.");
         } finally {
-            // Refresh Redux store and close edit mode
-            dispatch(fetchUserInfo(currentUser.id)).then(() => {
-                setShowEditMode(false);
-                setLoading(false);
-            });
+            setLoading(false);
         }
     };
 
     return (
-        <div className="editProfile">
-            {user ? (
-                <form onSubmit={handleSubmit}>
-                    <div className="avatar">
-                        <img src={formData.avatar} alt="Avatar" />
-                        <input type="file" accept="image/*" onChange={handleAvatarChange} />
-                    </div>
-                    <input type="text" name="username" value={formData.username} onChange={handleChange} placeholder="Username" />
-                    <input type="text" name="name" value={formData.name} onChange={handleChange} placeholder="Full Name" />
-                    <textarea name="about" value={formData.about} onChange={handleChange} placeholder="About You"></textarea>
-                    
-                    <button type="submit" disabled={loading}>{loading ? "Updating..." : "Update Profile"}</button>
-                </form>
-            ) : (
-                <p>Loading user data...</p>
-            )}
+        <div className={styles.editProfileContainer}>
+            <form onSubmit={handleSubmit} className={styles.editForm}>
+                <div className={styles.avatarSection}>
+                    <img
+                        src={previewUrl || user?.avatar || "/avatar.png"}
+                        alt="Profile"
+                        className={styles.avatar}
+                    />
+                    <input
+                        type="file"
+                        name="avatar"
+                        accept="image/*"
+                        onChange={handleChange}
+                        className={styles.fileInput}
+                    />
+                </div>
+                <div className={styles.inputGroup}>
+                    <label htmlFor="username">Username</label>
+                    <input
+                        type="text"
+                        id="username"
+                        name="username"
+                        value={formData.username}
+                        onChange={handleChange}
+                        placeholder="Enter username"
+                        required
+                    />
+                </div>
+                <div className={styles.inputGroup}>
+                    <label htmlFor="about">About</label>
+                    <textarea
+                        id="about"
+                        name="about"
+                        value={formData.about}
+                        onChange={handleChange}
+                        placeholder="Write something about yourself"
+                        rows="3"
+                    />
+                </div>
+                <div className={styles.buttonGroup}>
+                    <button
+                        type="button"
+                        onClick={() => setShowEditMode(false)}
+                        className={styles.cancelButton}
+                        disabled={loading}
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        type="submit"
+                        className={styles.saveButton}
+                        disabled={loading}
+                    >
+                        {loading ? "Saving..." : "Save Changes"}
+                    </button>
+                </div>
+            </form>
         </div>
     );
 };

@@ -4,7 +4,12 @@ import { useState } from "react";
 import { toast } from "react-toastify";
 import styled, { keyframes } from "styled-components"
 import { auth, db } from "../../config/firebase";
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
+import { 
+  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword, 
+  sendPasswordResetEmail
+} from "firebase/auth";
+import { FaEnvelope, FaLock, FaUser } from 'react-icons/fa';
 
 const fadeIn = keyframes`
   from { opacity: 0; transform: translateY(-10px); }
@@ -113,94 +118,151 @@ const ToggleButton = styled.p`
     text-decoration: underline;
   }
 `;
+
+const IconWrapper = styled.div`
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+`;
+
+const Icon = styled.span`
+  position: absolute;
+  left: 10px;
+  color: rgba(255, 255, 255, 0.7);
+`;
+
+const InputWithIcon = styled(Input)`
+  padding-left: 35px;
+`;
+
+const ForgotPassword = styled.p`
+  color: #ff758c;
+  cursor: pointer;
+  font-size: 14px;
+  align-self: flex-end;
+  margin-top: -10px;
+  &:hover {
+    text-decoration: underline;
+  }
+`;
+
 const Login = () => {
-  const [isSignIn, setIsSignIn] = useState(true)
+  const [isSignIn, setIsSignIn] = useState(true);
   const [loading, setLoading] = useState(false);
 
   const handleToggle = () => {
-    setIsSignIn(prev => !prev)
-  }
+    setIsSignIn(prev => !prev);
+  };
 
   const getFormData = (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
     return Object.fromEntries(formData);
-  }
+  };
+
+  const handleForgotPassword = async (email) => {
+    if (!email) {
+      toast.warn("Please enter your email address");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await sendPasswordResetEmail(auth, email);
+      toast.success("Password reset email sent! Please check your inbox.");
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to send reset email. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleRegister = async (e) => {
     try {
-      setLoading(true)
+      setLoading(true);
       const { username, email, password } = getFormData(e);
 
       // Validate inputs 
       if (!username || !email || !password) {
-        return toast.warn("Please enter the inputs")
+        toast.warn("Please fill in all fields");
+        return;
+      }
+
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        toast.warn("Please enter a valid email address");
+        return;
+      }
+
+      // Validate password strength
+      if (password.length < 6) {
+        toast.warn("Password must be at least 6 characters long");
+        return;
       }
 
       const userRef = collection(db, "users");
-      const q = query(userRef, where("username", "==", username))
+      const q = query(userRef, where("username", "==", username));
       const querySnapshot = await getDocs(q);
+      
       if (!querySnapshot.empty) {
-        return toast.warn("Select another username");
+        toast.warn("Username already taken. Please choose another one.");
+        return;
       }
-      try {
-        const res = await createUserWithEmailAndPassword(auth, email, password);
-        await setDoc(doc(db, "users", res.user.id), {
-          username,
-          email,
-          avatar: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS8isakIOEhuLkUlzxIDyWpWenxZSEST5byog&shttps://hackmack.vercel.app/avatar.jpeg",
-          id: res.user.id,
-          blocked: []
-        })
-        await setDoc(doc(db, "userchats", res.user.id), {
-          chats: []
-        })
-        toast.success("Account created! You can login now!");
 
+      const res = await createUserWithEmailAndPassword(auth, email, password);
+      await setDoc(doc(db, "users", res.user.uid), {
+        username,
+        email,
+        avatar: "/avatar.png",
+        id: res.user.uid,
+        blocked: [],
+        about: "Hey there! I'm using Emotalks",
+        createdAt: new Date(),
+        lastSeen: new Date()
+      });
 
-      } catch (error) {
-        console.log(err);
-        toast.error("Registration error");
+      await setDoc(doc(db, "userchats", res.user.uid), {
+        chats: []
+      });
 
-      }
-      // querySnapshot.forEach(doc=>{
-      //   console.log(doc.id,doc.data())
-      // })
-
+      toast.success("Account created successfully! You can now log in.");
     } catch (error) {
-      console.warn("Something went wrong !", error)
+      console.error("Registration error:", error);
+      toast.error(error.message || "Registration failed. Please try again.");
+    } finally {
+      setLoading(false);
     }
-    finally {
-      setLoading(false)
-    }
-
-
-  }
+  };
 
   const handleLogin = async (e) => {
-    setLoading(true)
-    const { email, password } = getFormData(e)
     try {
+      setLoading(true);
+      const { email, password } = getFormData(e);
+
+      if (!email || !password) {
+        toast.warn("Please enter both email and password");
+        return;
+      }
+
       await signInWithEmailAndPassword(auth, email, password);
-
-      toast.success("Login successful! Redirecting...");
-
+      toast.success("Login successful!");
     } catch (error) {
-      console.error(err);
-      toast.error("Login failed. Please check your credentials.");
+      console.error("Login error:", error);
+      toast.error(error.message || "Login failed. Please check your credentials.");
+    } finally {
+      setLoading(false);
     }
-    finally {
-      setLoading(false)
-
-    }
-
-
-  }
+  };
 
   return (
     <Background>
       <Container>
         <Logo>Emotalks</Logo>
         <Slogan>Express. Connect. Engage.</Slogan>
+
         <FormWrapper>
           <AnimatePresence mode="wait">
             {isSignIn ? (
@@ -212,35 +274,85 @@ const Login = () => {
                 exit={{ x: "-100%", opacity: 0 }}
                 transition={{ duration: 0.5 }}
               >
-                <Input type="text" placeholder="Email" name="email" />
-                <Input type="password" placeholder="Password" name="password" />
-                <Button disabled={loading}>{loading ? "Loading..." : "Sign In"}</Button>
+                <IconWrapper>
+                  <Icon><FaEnvelope /></Icon>
+                  <InputWithIcon 
+                    type="email" 
+                    placeholder="Email" 
+                    name="email" 
+                    required
+                  />
+                </IconWrapper>
+                <IconWrapper>
+                  <Icon><FaLock /></Icon>
+                  <InputWithIcon 
+                    type="password" 
+                    placeholder="Password" 
+                    name="password" 
+                    required
+                  />
+                </IconWrapper>
+                <ForgotPassword onClick={() => {
+                  const email = document.querySelector('input[name="email"]').value;
+                  handleForgotPassword(email);
+                }}>
+                  Forgot Password?
+                </ForgotPassword>
+                <Button disabled={loading}>
+                  {loading ? "Signing in..." : "Sign In"}
+                </Button>
               </Form>
             ) : (
               <Form
                 key="signup"
                 onSubmit={handleRegister}
-
                 initial={{ x: "-100%", opacity: 0 }}
                 animate={{ x: 0, opacity: 1 }}
                 exit={{ x: "100%", opacity: 0 }}
                 transition={{ duration: 0.5 }}
               >
-                <Input type="text" placeholder="Username" name="username" />
-                <Input type="text" placeholder="Email" name="email" />
-                <Input type="password" placeholder="Password" name="password" />
-                <Button disabled={loading}>{loading ? "Loading..." : "Sign Up"}</Button>
+                <IconWrapper>
+                  <Icon><FaUser /></Icon>
+                  <InputWithIcon 
+                    type="text" 
+                    placeholder="Username" 
+                    name="username" 
+                    required
+                  />
+                </IconWrapper>
+                <IconWrapper>
+                  <Icon><FaEnvelope /></Icon>
+                  <InputWithIcon 
+                    type="email" 
+                    placeholder="Email" 
+                    name="email" 
+                    required
+                  />
+                </IconWrapper>
+                <IconWrapper>
+                  <Icon><FaLock /></Icon>
+                  <InputWithIcon 
+                    type="password" 
+                    placeholder="Password" 
+                    name="password" 
+                    required
+                    minLength="6"
+                  />
+                </IconWrapper>
+                <Button disabled={loading}>
+                  {loading ? "Creating account..." : "Sign Up"}
+                </Button>
               </Form>
             )}
           </AnimatePresence>
         </FormWrapper>
+        
         <ToggleButton onClick={handleToggle}>
           {isSignIn ? "Don't have an account? Sign Up" : "Already have an account? Sign In"}
         </ToggleButton>
-
       </Container>
     </Background>
-  )
-}
+  );
+};
 
-export default Login
+export default Login;

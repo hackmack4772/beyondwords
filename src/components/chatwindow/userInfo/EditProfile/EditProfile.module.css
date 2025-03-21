@@ -1,0 +1,147 @@
+.editProfileContainer {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.editForm {
+    background-color: white;
+    padding: 2rem;
+    border-radius: 1rem;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.avatarSection {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+}
+
+.avatar {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid #0084ff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.fileInput {
+    width: 100%;
+    max-width: 250px;
+    padding: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 0.5rem;
+    cursor: pointer;
+}
+
+.fileInput::-webkit-file-upload-button {
+    background-color: #0084ff;
+    color: white;
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    margin-right: 0.5rem;
+}
+
+.inputGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.inputGroup label {
+    font-weight: 600;
+    color: #333;
+}
+
+.inputGroup input,
+.inputGroup textarea {
+    padding: 0.75rem;
+    border: 1px solid #ddd;
+    border-radius: 0.5rem;
+    font-size: 1rem;
+    transition: border-color 0.2s ease;
+}
+
+.inputGroup input:focus,
+.inputGroup textarea:focus {
+    outline: none;
+    border-color: #0084ff;
+}
+
+.inputGroup textarea {
+    resize: vertical;
+    min-height: 100px;
+}
+
+.buttonGroup {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+    margin-top: 1rem;
+}
+
+.cancelButton,
+.saveButton {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 0.5rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.cancelButton {
+    background-color: #f0f0f0;
+    color: #666;
+}
+
+.cancelButton:hover {
+    background-color: #e0e0e0;
+}
+
+.saveButton {
+    background-color: #0084ff;
+    color: white;
+}
+
+.saveButton:hover {
+    background-color: #0073e6;
+}
+
+.cancelButton:disabled,
+.saveButton:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+    .editForm {
+        width: 95%;
+        padding: 1.5rem;
+    }
+
+    .buttonGroup {
+        flex-direction: column;
+    }
+
+    .cancelButton,
+    .saveButton {
+        width: 100%;
+    }
+} 
