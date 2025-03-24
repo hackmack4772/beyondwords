@@ -1,33 +1,34 @@
 // Notification Manager Utility
-const NotificationManager = {
-  // Notification sounds
-  sounds: {
-    message: new Audio('/assets/message-notification.mp3'),
-    call: new Audio('/assets/call-notification.mp3')
-  },
+class NotificationManager {
+  constructor() {
+    this.sounds = {
+      message: new Audio('/assets/message-notification.mp3'),
+      call: new Audio('/assets/call-notification.mp3')
+    };
+  }
 
   // Play notification sound
-  playSound: (type = 'message') => {
+  playSound(type = 'message') {
     try {
-      // Reset sound to beginning
-      NotificationManager.sounds[type].currentTime = 0;
-      // Play the sound
-      NotificationManager.sounds[type].play().catch(err => {
-        console.warn('Could not play notification sound:', err);
-      });
+      if (this.sounds[type]) {
+        this.sounds[type].currentTime = 0;
+        return this.sounds[type].play().catch(err => {
+          console.warn('Could not play notification sound:', err);
+        });
+      }
     } catch (error) {
       console.error('Error playing notification sound:', error);
     }
-  },
+  }
 
   // Check if browser supports notifications
-  isSupported: () => {
+  isSupported() {
     return 'Notification' in window && 'serviceWorker' in navigator;
-  },
+  }
 
   // Request notification permission
-  requestPermission: async () => {
-    if (!NotificationManager.isSupported()) {
+  async requestPermission() {
+    if (!this.isSupported()) {
       console.warn('Notifications are not supported in this browser');
       return false;
     }
@@ -39,15 +40,15 @@ const NotificationManager = {
       console.error('Error requesting notification permission:', error);
       return false;
     }
-  },
+  }
 
   // Check if notification permission is granted
-  hasPermission: () => {
+  hasPermission() {
     return Notification.permission === 'granted';
-  },
+  }
 
   // Register service worker
-  registerServiceWorker: async () => {
+  async registerServiceWorker() {
     if (!navigator.serviceWorker) {
       console.warn('Service Worker is not supported in this browser');
       return null;
@@ -61,11 +62,11 @@ const NotificationManager = {
       console.error('Service Worker registration failed:', error);
       return null;
     }
-  },
+  }
 
   // Show a local notification (when app is open but not focused)
-  showLocalNotification: (title, options = {}) => {
-    if (!NotificationManager.hasPermission()) {
+  showLocalNotification(title, options = {}) {
+    if (!this.hasPermission()) {
       console.warn('Notification permission not granted');
       return;
     }
@@ -78,30 +79,35 @@ const NotificationManager = {
 
     // Play sound if specified
     if (options.sound) {
-      NotificationManager.playSound(options.sound);
+      this.playSound(options.sound);
     }
 
-    const notification = new Notification(title, {
-      icon: options.icon || '/logo192.png',
-      body: options.body || '',
-      ...options
-    });
+    try {
+      const notification = new Notification(title, {
+        icon: options.icon || '/logo192.png',
+        body: options.body || '',
+        ...options
+      });
 
-    notification.onclick = () => {
-      window.focus();
-      notification.close();
-      if (options.onClick) options.onClick();
-    };
+      notification.onclick = () => {
+        window.focus();
+        notification.close();
+        if (options.onClick) options.onClick();
+      };
 
-    return notification;
-  },
+      return notification;
+    } catch (error) {
+      console.error('Error showing notification:', error);
+      return null;
+    }
+  }
 
   // Show notification for new message
-  showMessageNotification: (message, sender, chatId) => {
-    const title = sender.username || 'New Message';
+  showMessageNotification(message, sender, chatId) {
+    const title = sender?.username || 'New Message';
     const options = {
-      body: message.text || 'You received a new message',
-      icon: sender.avatar || '/avatar.png',
+      body: message?.text || 'You received a new message',
+      icon: sender?.avatar || '/avatar.png',
       data: { chatId },
       tag: `chat-${chatId}`, // Group notifications by chat
       sound: 'message',
@@ -111,15 +117,15 @@ const NotificationManager = {
       }
     };
 
-    return NotificationManager.showLocalNotification(title, options);
-  },
+    return this.showLocalNotification(title, options);
+  }
 
   // Show notification for incoming call
-  showCallNotification: (caller, callId, isVideoCall = true) => {
-    const title = caller.username || 'Incoming Call';
+  showCallNotification(caller, callId, isVideoCall = true) {
+    const title = caller?.username || 'Incoming Call';
     const options = {
       body: `Incoming ${isVideoCall ? 'video' : 'audio'} call`,
-      icon: caller.avatar || '/avatar.png',
+      icon: caller?.avatar || '/avatar.png',
       data: { callId },
       tag: `call-${callId}`,
       sound: 'call',
@@ -133,8 +139,11 @@ const NotificationManager = {
       }
     };
 
-    return NotificationManager.showLocalNotification(title, options);
+    return this.showLocalNotification(title, options);
   }
-};
+}
 
-export default NotificationManager; 
+// Create a singleton instance
+const notificationManager = new NotificationManager();
+
+export default notificationManager; 

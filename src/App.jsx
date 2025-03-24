@@ -8,7 +8,7 @@ import { fetchUserInfo } from "./features/user-data/usersdata";
 import List from "./components/chatwindow/chat-layout/List";
 import styled from "styled-components";
 import { motion } from "framer-motion";
-import NotificationManager from "./utils/NotificationManager";
+import { NotificationProvider } from './contexts/NotificationContext';
 
 const Container = styled(motion.div)`
   width: 100vw;
@@ -86,39 +86,34 @@ const App = () => {
     const dispatch = useDispatch();
     const currentUser = useSelector((state) => state?.user?.currentUser);
 
-    // Initialize notifications
     useEffect(() => {
-        const initializeNotifications = async () => {
-            if (NotificationManager.isSupported()) {
-                // Register service worker
-                await NotificationManager.registerServiceWorker();
-                
-                // Check if we need to prompt for notification permission
+        const checkNotificationPermission = () => {
+            if ('Notification' in window) {
                 if (Notification.permission === 'default' && currentUser) {
                     setShowNotificationPrompt(true);
                 }
             }
         };
         
-        initializeNotifications();
+        checkNotificationPermission();
     }, [currentUser]);
 
     const handleRequestNotificationPermission = async () => {
-        const granted = await NotificationManager.requestPermission();
-        setShowNotificationPrompt(false);
-        console.log('Notification permission granted:', granted);
+        if ('Notification' in window) {
+            const permission = await Notification.requestPermission();
+            setShowNotificationPrompt(false);
+            console.log('Notification permission:', permission);
+        }
     };
 
     useEffect(() => {
         const unSub = onAuthStateChanged(auth, (user) => {
-            console.log(user,"useruseruser");
-            
             if (user) {
                 dispatch(fetchUserInfo(user.uid)).then(() => {
                     setAuthResolved(true);
                 });
             } else {
-                dispatch(fetchUserInfo(user)).then(() => {
+                dispatch(fetchUserInfo(null)).then(() => {
                     setAuthResolved(true);
                 });
             }
@@ -138,30 +133,32 @@ const App = () => {
     }
 
     return (
-        <Container initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-            {showNotificationPrompt && (
-                <NotificationBanner 
-                    initial={{ y: -50, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                >
-                    <span>Enable notifications to stay updated with new messages and calls</span>
-                    <button onClick={handleRequestNotificationPermission}>
-                        Enable
-                    </button>
-                </NotificationBanner>
-            )}
+        <NotificationProvider>
+            <Container initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                {showNotificationPrompt && (
+                    <NotificationBanner 
+                        initial={{ y: -50, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                    >
+                        <span>Enable notifications to stay updated with new messages and calls</span>
+                        <button onClick={handleRequestNotificationPermission}>
+                            Enable
+                        </button>
+                    </NotificationBanner>
+                )}
 
-            <Routes>
-                <Route
-                    path="/login"
-                    element={!currentUser ? <Login /> : <Navigate to="/" />}
-                />
-                <Route
-                    path="/"
-                    element={currentUser ? <List /> : <Navigate to="/login" />}
-                />
-            </Routes>
-        </Container>
+                <Routes>
+                    <Route
+                        path="/login"
+                        element={!currentUser ? <Login /> : <Navigate to="/" />}
+                    />
+                    <Route
+                        path="/"
+                        element={currentUser ? <List /> : <Navigate to="/login" />}
+                    />
+                </Routes>
+            </Container>
+        </NotificationProvider>
     );
 };
 

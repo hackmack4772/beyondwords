@@ -7,11 +7,10 @@ import { useNavigate } from "react-router-dom";
 import EditProfile from "./EditProfile/EditProfile";
 import { useState } from "react";
 
-const Userinfo = () => {
+const Userinfo = ({setShowEditMode,showEditMode}) => {
   const currentUser = useSelector((state) => state?.user?.currentUser);
   const dispatch = useDispatch();
   const navigate = useNavigate(); 
-  const [showEditMode, setShowEditMode] = useState(false)
   
 
   const handleLogout = async () => {
