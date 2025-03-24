@@ -6,6 +6,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { doc, onSnapshot } from "firebase/firestore";
 import { db } from "../../../config/firebase";
 import "./list.css";
+import { changeUser } from "../../../features/use-chat-store/chatStore";
 
 const List = () => {
   const { currentUser } = useSelector((state) => state.user);
