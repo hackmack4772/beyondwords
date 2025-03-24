@@ -79,9 +79,10 @@ const List = () => {
     if (isMobile) {
       setShowChatList(true);
       setShowChat(false);
-     dispatch(changeUser({ chatId: null, user: userData }));
       
     }
+    dispatch(changeUser({ chatId: null, user: null }));
+
   };
   console.log(showChatList, isMobile,"isMobile");
   
