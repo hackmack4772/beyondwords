@@ -5,6 +5,8 @@ import { doc, getDoc, onSnapshot, updateDoc } from "firebase/firestore"
 import { db } from "../../../config/firebase"
 import { changeUser } from "../../../features/use-chat-store/chatStore"
 import AddUser from "./adduser/AddUser"
+import { FaPlus, FaMinus, FaEdit, FaSearch } from "react-icons/fa";
+import EditProfile from "../userInfo/EditProfile/EditProfile"
 
 const ChatList = ({ onChatSelect }) => {
     const [input, setInput] = useState('')
@@ -12,14 +14,17 @@ const ChatList = ({ onChatSelect }) => {
     const [chats, setChats] = useState([])
     const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
     const currentUser = useSelector((state) => state.user.currentUser)
-    const { chatId } = useSelector((state) => state.chat)    
+    const { chatId } = useSelector((state) => state.chat)
+
     const dispatch = useDispatch()
+    const [showEditMode, setShowEditMode] = useState(false)
+
 
     useEffect(() => {
         const handleResize = () => {
             setIsMobile(window.innerWidth <= 768);
         };
-        
+
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);
     }, []);
@@ -60,7 +65,9 @@ const ChatList = ({ onChatSelect }) => {
 
     }, [currentUser.id])
 
-    const filteredChats = useMemo(() => {        
+    const filteredChats = useMemo(() => {
+        console.log(chats, "filteredChats");
+
         return chats.filter((c) =>
             c.user?.username?.toLowerCase().includes(input.toLowerCase())
         );
@@ -91,7 +98,7 @@ const ChatList = ({ onChatSelect }) => {
         <div className={`chatList ${isMobile && chatId ? 'hidden' : ''}`}>
             <div className="search">
                 <div className="searchBar">
-                    <img src="./search.png" alt="" />
+                    <FaSearch className="search-icon" />
                     <input
                         type="text"
                         placeholder="Search"
@@ -99,17 +106,39 @@ const ChatList = ({ onChatSelect }) => {
                         onChange={(e) => setInput(e.target.value)}
                     />
                 </div>
-                <img
-                    src={addMode ? "./minus.png" : "./plus.png"}
-                    alt=""
-                    className="add"
-                    onClick={() => setAddMode((prev) => !prev)}
-                />
+                <div className="actions d-flex align-items-center gap-3">
+                    {addMode ? (
+                        <FaMinus className="icon add" color="black" onClick={() => 
+                        {
+                            setAddMode((prev) => !prev)
+                            setShowEditMode(false)
+                        }
+
+                         } />
+                    ) : (
+                        <FaPlus className="icon add" color="black" onClick={() => 
+
+                            {
+                                setAddMode((prev) => !prev)
+                                setShowEditMode(false)
+                            }
+                        } />
+                    )}
+                    <FaEdit className="icon edit" color="black" onClick={() => 
+                    {
+                        setShowEditMode((prev) => !prev)
+                        setAddMode(false)
+                    }
+
+
+                    } />
+                </div>
+
             </div>
             <div className="chatItemsContainer">
                 {filteredChats.length && filteredChats.map((chat) => (
                     <div
-                        key={chat.id}
+                        key={chat.updatedAt}
                         className={`item ${chat.id === chatId ? "selected" : ""}`}
                         onClick={() => handleSelect(chat)}
                     >
@@ -124,16 +153,19 @@ const ChatList = ({ onChatSelect }) => {
                         <div className="texts">
                             <span>
                                 {chat.user?.blocked?.includes(currentUser.id)
-                                    ? "User" 
+                                    ? "User"
                                     : chat.user?.username || "Unknown User"
                                 }
                             </span>
-                            <p>{chat.lastMessage?.text || "No messages yet"}</p>
+                            <p>{chat.lastMessage || "No messages yet"}</p>
                         </div>
+
                     </div>
                 ))}
             </div>
-            {addMode && <AddUser/>}
+            {addMode && <AddUser />}
+            {showEditMode && <EditProfile show={showEditMode} setShowEditMode={setShowEditMode} />}
+
         </div>
     )
 }

@@ -10,11 +10,11 @@ import { fetchUserInfo } from "../../../../features/user-data/usersdata";
 const EditProfile = ({ setShowEditMode }) => {
     const currentUser = useSelector((state) => state.user.currentUser);
     const [user, setUser] = useState(null);
-    const [formData, setFormData] = useState({ 
-        username: "", 
+    const [formData, setFormData] = useState({
+        username: "",
         name: "",
         about: "",
-        avatar: "" 
+        avatar: ""
     });
     const [avatarFile, setAvatarFile] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -104,17 +104,26 @@ const EditProfile = ({ setShowEditMode }) => {
     return (
         <div className="editProfile">
             {user ? (
-                <form onSubmit={handleSubmit}>
-                    <div className="avatar">
-                        <img src={formData.avatar} alt="Avatar" />
-                        <input type="file" accept="image/*" onChange={handleAvatarChange} />
+
+                <>
+                <div className="header">
+                    <button className="close" onClick={() => setShowEditMode(false)}>X</button>
                     </div>
-                    <input type="text" name="username" value={formData.username} onChange={handleChange} placeholder="Username" />
-                    <input type="text" name="name" value={formData.name} onChange={handleChange} placeholder="Full Name" />
-                    <textarea name="about" value={formData.about} onChange={handleChange} placeholder="About You"></textarea>
-                    
-                    <button type="submit" disabled={loading}>{loading ? "Updating..." : "Update Profile"}</button>
-                </form>
+
+                    <form onSubmit={handleSubmit}>
+                        <div className="avatar">
+                            <img src={formData.avatar} alt="Avatar" />
+                            <input type="file" accept="image/*" onChange={handleAvatarChange} />
+                        </div>
+                        <input type="text" name="username" value={formData.username} onChange={handleChange} placeholder="Username" />
+                        <input type="text" name="name" value={formData.name} onChange={handleChange} placeholder="Full Name" />
+                        <textarea name="about" value={formData.about} onChange={handleChange} placeholder="About You"></textarea>
+
+                        <button type="submit" disabled={loading}>{loading ? "Updating..." : "Update Profile"}</button>
+                    </form>
+                </>
+
+
             ) : (
                 <p>Loading user data...</p>
             )}

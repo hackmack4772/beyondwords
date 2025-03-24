@@ -334,9 +334,9 @@ const Chat = ({ onBackClick }) => {
       <div className={styles.inputContainer}>
         <div className={styles.inputIcons}>
           <label htmlFor="file">
-            <button className={styles.inputButton}>
+            {/* <button className={styles.inputButton}> */}
             <FaPaperclip color="black" />
-            </button>
+            {/* </button> */}
           </label>
           <input type="file" id="file" style={{ display: "none" }} onChange={handleImg} />
           <button 

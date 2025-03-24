@@ -2,10 +2,11 @@ import React, { useEffect, useState } from "react";
 import ChatList from "../chatList/ChatList";
 import Chat from "../chat/Chat";
 import Userinfo from "../userInfo/Userinfo";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { doc, onSnapshot } from "firebase/firestore";
 import { db } from "../../../config/firebase";
 import "./list.css";
+import { changeUser } from "../../../features/use-chat-store/chatStore";
 
 const List = () => {
   const { currentUser } = useSelector((state) => state.user);
@@ -14,6 +15,7 @@ const List = () => {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [showChatList, setShowChatList] = useState(true);
   const [showChat, setShowChat] = useState(false);
+  const dispatch = useDispatch()
 
   // Check if mobile and set up resize listener
   useEffect(() => {
@@ -78,8 +80,12 @@ const List = () => {
     if (isMobile) {
       setShowChatList(true);
       setShowChat(false);
+     dispatch(changeUser({ chatId: null, user: null }));
+      
     }
   };
+  console.log(showChatList, isMobile,"isMobile");
+  
 
   return (
     <div className="chat-layout-container">

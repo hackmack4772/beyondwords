@@ -279,6 +279,7 @@
 
 .inputIcons {
   display: flex;
+  align-items: center;
   gap: 0.75rem;
 }
 
@@ -458,6 +459,15 @@
 
 /* Sender's Own Message */
 .messageOwn {
+  flex-direction: column;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  margin: 10px 0;
+}
+
+.messageOwn {
+  flex-direction: column;
   display: flex;
   align-items: flex-end;
   justify-content: flex-end;
@@ -478,3 +488,7 @@
 }
 
 
+.messageOwn .messageContent {
+  align-items: flex-end !important;
+ 
+}
